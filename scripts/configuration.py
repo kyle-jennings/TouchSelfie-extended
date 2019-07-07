@@ -11,23 +11,23 @@ class Configuration():
     countdown2  = 3 # seconds of preview between snaps (Four pictures mode)
     photoCaption = "" # Caption in the photo album
     ARCHIVE      = True # Do we archive photos locally
-    archive_dir  = os.path.join("..","Photos") # Where do we archive photos
-    archive_to_all_usb_drives  = True
+    archive_dir  = os.path.join("..","photos") # Where do we archive photos
+    archive_to_all_usb_drives  = False
     albumID      = None #  use install_credentials.py to create 'album.id'
-    album_name   = "Drop Box"
-    emailSubject = "Here's your photo!" # subject line of the email sent from the photobooth
-    emailMsg     = "Greetings, here's your photo sent from the photobooth" # Brief body of the message sent from the photobooth
-    full_screen  = True #Start application in full screen
+    album_name   = "Wedding"
+    emailSubject = "Kat and Kyle 2019 Photobooth!" # subject line of the email sent from the photobooth
+    emailMsg     = "Thank you for being part of this celebration!" # Brief body of the message sent from the photobooth
+    full_screen  = False #Start application in full screen
     enable_email  = True #Enable the 'send email" feature
     enable_upload = True #Enable the upload feature
     enable_print = False #Enable the printer feature
-    enable_effects = True
+    enable_effects = False
     selected_printer = None #No printer select
     enable_hardware_buttons = False #Enable hardware buttons
     enable_email_logging = False # Should we log outgoing emails?
 
     #init
-    def __init__(self,configuration_file_name):
+    def __init__(self, configuration_file_name):
         """Creates the configuration object with default values and load the configuration file
 
         __init__ will parse the configuration file given as its argument
@@ -50,63 +50,64 @@ class Configuration():
             print "Error while parsing %s config file : %s"%(self.config_file,error)
             self.is_valid = False
             return False
-        if "gmail_user" in config.keys():  self.user_name = config['gmail_user']
+        
+        #mandatory configuration!!
+        if "gmail_user" in config.keys(): self.user_name = config['gmail_user']
         else:
-            #mandatory configuration!!
             self.is_valid = False
 
 
         # all other configuration keys are optional
-        if "countdown_before_snap" in config.keys(): self.countdown1 = config["countdown_before_snap"]
-        if "countdown_inter_snap" in config.keys():  self.countdown2 = config["countdown_inter_snap"]
-        if "snap_caption" in config.keys():  self.photoCaption = config["snap_caption"]
-        if "local_archive" in config.keys():  self.ARCHIVE = config["local_archive"]
-        if "archive_to_all_usb_drives" in config.keys():  self.archive_to_all_usb_drives = config["archive_to_all_usb_drives"]
-        if "local_archive_dir" in config.keys():  self.archive_dir = config["local_archive_dir"]
-        if "google_photo_album_id" in config.keys():  self.albumID = config["google_photo_album_id"]
-        if "google_photo_album_name" in config.keys(): self.album_name = config["google_photo_album_name"]
-        if "email_subject" in config.keys():  self.emailSubject = config["email_subject"]
-        if "email_body" in config.keys():  self.emailMsg = config["email_body"]
-        if "logo_file" in config.keys():  self.logo_file = config["logo_file"]
-        if "full_screen" in config.keys():  self.full_screen = config["full_screen"]
-        if "enable_email" in config.keys():  self.enable_email = config["enable_email"]
-        if "enable_upload" in config.keys():  self.enable_upload = config["enable_upload"]
-        if "enable_print" in config.keys(): self.enable_print = config["enable_print"]
+        if "archive_to_all_usb_drives" in config.keys(): self.archive_to_all_usb_drives = config["archive_to_all_usb_drives"]
+        if "countdown_before_snap" in config.keys(): self.countdown2 = config["countdown_before_snap"]
+        if "countdown_inter_snap" in config.keys(): self.countdown2 = config["countdown_inter_snap"]
+        if "email_body" in config.keys(): self.emailMsg = config["email_body"]
+        if "email_subject" in config.keys(): self.emailSubject = config["email_subject"]
         if "enable_effects" in config.keys(): self.enable_effects = config["enable_effects"]
-        if "selected_printer" in config.keys(): self.selected_printer = config["selected_printer"]
-        if "enable_hardware_buttons" in config.keys():  self.enable_hardware_buttons = config["enable_hardware_buttons"]
+        if "enable_email" in config.keys(): self.enable_email = config["enable_email"]
         if "enable_email_logging" in config.keys(): self.enable_email_logging = config["enable_email_logging"]
+        if "enable_hardware_buttons" in config.keys(): self.enable_hardware_buttons = config["enable_hardware_buttons"]
+        if "enable_print" in config.keys(): self.enable_print = config["enable_print"]
+        if "enable_upload" in config.keys(): self.enable_upload = config["enable_upload"]
+        if "full_screen" in config.keys(): self.full_screen = config["full_screen"]
+        if "google_photo_album_id" in config.keys(): self.albumID = config["google_photo_album_id"]
+        if "google_photo_album_name" in config.keys(): self.album_name = config["google_photo_album_name"]
+        if "local_archive" in config.keys(): self.ARCHIVE = config["local_archive"]
+        if "local_archive_dir" in config.keys(): self.archive_dir = config["local_archive_dir"]
+        if "logo_file" in config.keys(): self.logo_file = config["logo_file"]
+        if "selected_printer" in config.keys(): self.selected_printer = config["selected_printer"]
+        if "snap_caption" in config.keys(): self.photoCaption = config["snap_caption"]
 
 
         return self.is_valid
 
-
     def write(self):
         """ write the configuration object to the configuration file given at creation time"""
         myconfig = {
-            "gmail_user": self.user_name,
-            "countdown_before_snap": self.countdown1,
-            "countdown_inter_snap": self.countdown2,
-            "snap_caption": self.photoCaption,
-            "local_archive" : self.ARCHIVE,
             "archive_to_all_usb_drives" : self.archive_to_all_usb_drives,
-            "local_archive_dir" : self.archive_dir,
+            "countdown_before_snap": self.countdown2,
+            "countdown_inter_snap": self.countdown2,
+            "email_body":self.emailMsg,
+            "email_subject": self.emailSubject,
+            "enable_effects": self.enable_effects,
+            "enable_email": self.enable_email,
+            "enable_email_logging" : self.enable_email_logging,
+            "enable_hardware_buttons": self.enable_hardware_buttons,
+            "enable_print": self.enable_print,
+            "enable_upload": self.enable_upload,
+            "full_screen": self.full_screen,
+            "gmail_user": self.user_name,
             "google_photo_album_id" : self.albumID,
             "google_photo_album_name" : self.album_name,
-            "email_subject": self.emailSubject,
-            "email_body":self.emailMsg,
+            "local_archive": self.ARCHIVE,
+            "local_archive_dir" : self.archive_dir,
             "logo_file": self.logo_file,
-            "full_screen": self.full_screen,
-            "enable_email": self.enable_email,
-            "enable_upload": self.enable_upload,
-            "enable_print": self.enable_print,
-            "enable_effects": self.enable_effects,
             "selected_printer": self.selected_printer,
-            "enable_hardware_buttons": self.enable_hardware_buttons,
-            "enable_email_logging" : self.enable_email_logging
+            "snap_caption": self.photoCaption,
         }
         try:
-            with open(self.config_file,'w') as config:
+            file = os.path.join("..", self.config_file)
+            with open(file, 'w') as config:
                 config.write(json.dumps(myconfig, indent =4, sort_keys=True))
         except Exception as error:
             raise ValueError("Problem writing %s configuration file: %s"%(self.config_file,error))

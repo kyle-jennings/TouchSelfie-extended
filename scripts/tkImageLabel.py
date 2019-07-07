@@ -13,15 +13,15 @@ log = logging.getLogger(__name__)
 
 class ImageLabel(Label):
     """a label containing and image"""
-    def __init__(self, Tk_root, size=None):
+    def __init__(self, Tk_root, size = None):
         """Create the image label
         
         Arguments:
             Tk_root (Tk widget) : parent object
             size    tupple(w,h) : image max dimensions
         """
-        Label.__init__(self,Tk_root)
-        self.size=size
+        Label.__init__(self, Tk_root)
+        self.size = size
         self.root = Tk_root # for update()
         log.debug("Created ImageLabel with size %s"%repr(size))
         
@@ -48,7 +48,7 @@ class ImageLabel(Label):
                 self.frames.append(ImageTk.PhotoImage(temp_frame))
                 if i == 1:
                     #immediately load first frame
-                    self.config(image=self.frames[0])
+                    self.config(image = self.frames[0])
                     self.root.update()
                 im.seek(i)
         except EOFError:
@@ -60,14 +60,14 @@ class ImageLabel(Label):
             self.delay = 100
 
         if len(self.frames) == 1:
-            self.config(image=self.frames[0])
+            self.config(image = self.frames[0])
         else:
             self.next_frame()
 
     def unload(self):
         """Remove the image"""
         log.debug("Unloading image")
-        self.config(image="")
+        self.config(image = "")
         self.frames = None
         self.root.update()
 
@@ -76,7 +76,7 @@ class ImageLabel(Label):
         if self.frames:
             self.loc += 1
             self.loc %= len(self.frames)
-            self.config(image=self.frames[self.loc])
+            self.config(image = self.frames[self.loc])
             self.root.update()
             self.after(self.delay, self.next_frame)
             
@@ -84,11 +84,11 @@ class ImageLabel(Label):
 if __name__ == '__main__':
 
     root = Tk()
-    lbl = ImageLabel(root,size=(300,300))
+    lbl = ImageLabel(root, size = (300, 300))
     def next_im():
         lbl.load('anim.gif')
     
     lbl.pack()
     lbl.load('photo.jpg')
-    root.after(5000,next_im)
+    root.after(5000, next_im)
     root.mainloop()

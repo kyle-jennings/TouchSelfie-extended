@@ -6,6 +6,6 @@ This will snap one photo by effect/parameters and will launch a cropper preview 
 
 In the preview window, just type <Up>, <Down>, <Left> or <Right> to center the crop where you want it and hit <Return>.
 
-Crops will be generated in the `scripts/ressources/effects/new_thumbs` directory. If you're happy with what you got, just copy every thumbnails into the `scripts/ressources/effects` directory.
+Crops will be generated in the `scripts/assets/effects/new_thumbs` directory. If you're happy with what you got, just copy every thumbnails into the `scripts/assets/effects` directory.
 
 Voila, you just changed your effects thumbnails!

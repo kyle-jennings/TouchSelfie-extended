@@ -6,7 +6,7 @@
     and optionally
         - creating a Google Project to allow OAuth2 authentication
         - creating the configuration.json file
-        - creating the startup script photobooth.sh
+        - creating the startup script start.sh
 """
 import os.path
 import sys
@@ -20,8 +20,8 @@ except ImportError:
     print "Cups not installed. removing option"
     printer_selection_enable = False
 
-VALID_ICON_FILE = os.path.join("ressources","ic_valid.png")
-INVALID_ICON_FILE = os.path.join("ressources","ic_invalid.png")
+VALID_ICON_FILE = os.path.join("assets","ic_valid.png")
+INVALID_ICON_FILE = os.path.join("assets","ic_invalid.png")
 from PIL import Image as _Image
 from PIL import ImageTk as _ImageTk
 from Tkinter import *
@@ -740,11 +740,11 @@ Click the Start button below:
         print "bye!"
         #finally create a personalized script to run the photobooth
         install_dir = os.path.split(os.path.abspath(__file__))[0]
-        script_name = os.path.join(os.path.abspath(".."),"photobooth.sh")
+        script_name = os.path.join(os.path.abspath(".."),"start.sh")
         script = open(script_name,"w")
         script.write("#!/bin/sh\n")
         script.write("cd %s\n"% install_dir)
-        script.write("python user_interface.py $* > %s\n"%(os.path.join(install_dir,"..","photobooth.log")))
+        script.write("python UserInterface.py $* > %s\n"%(os.path.join(install_dir,"..","log")))
         script.close()
         #make the script executable
         import stat
@@ -1016,11 +1016,11 @@ def console_assistant():
     test_connection(service, config, test_email, test_upload)
 
     #finally create a personalized script to run the photobooth
-    script_name = os.path.join(os.path.abspath(".."),"photobooth.sh")
+    script_name = os.path.join(os.path.abspath(".."),"start.sh")
     script = open(script_name,"w")
     script.write("#!/bin/sh\n")
     script.write("cd %s\n"% install_dir)
-    script.write("python user_interface.py $* > %s\n"%(os.path.join(install_dir,"..","photobooth.log")))
+    script.write("python UserInterface.py $* > %s\n"%(os.path.join(install_dir,"..","log")))
     script.close()
     #make the script executable
     import stat

@@ -43,8 +43,8 @@ Many thanks to [Caroline Dunn](http://carolinedunn.org/) for her great teaching 
 sudo apt-get update
 
 # Install ImageTk, Image from PIL
-sudo apt-get install python-imaging
-sudo apt-get install python-imaging-tk
+sudo apt-get install python-pil
+sudo apt-get install python-pil.imagetk
 
 # Install google data api and upgrade it
 sudo apt-get install python-gdata

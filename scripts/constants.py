@@ -26,6 +26,11 @@ Constants for the TouchSelfie program
 """
 import os
 
+TIMER = 3
+
+BG_COLOR = "black";
+FG_COLOR = "white";
+
 # Obsolete: This will be autodetected at runtime
 SCREEN_W = 800 ## raspi touch
 SCREEN_H = 480 ## raspi touch
@@ -33,14 +38,9 @@ SCREEN_H = 480 ## raspi touch
 # Parameters for the three main effects
 # None: simple shot
 # Four: Collage of four shots
-# Animation : animated gif
-v2_full_size = (3280,2464)
-v2_half_size = (1640,1232)
-v2_quarter_size = (820,616)
-
-v1_full_size = (2592,1944)
-v1_half_size = (1296,972)
-v1_quarter_size = (648,486)
+v2_full_size = (2592,1944)
+v2_half_size = (1296,972)
+v2_quarter_size = (648,486)
 
 EFFECTS_PARAMETERS = {
     "None": {
@@ -50,27 +50,18 @@ EFFECTS_PARAMETERS = {
     },
     "Four": { 
         'snap_size' : v2_half_size,                       #(width, height) of each shots of the 2x2 collage
-        'foreground_image' : "collage_four_square.png" # Overlay image on top of the collage
+        'foreground_image' : os.path.join("assets", "collage_four_square.png") # Overlay image on top of the collage
     },
-    "Animation": {
-        'snap_size' : (500, 500),   #(width, height) => Caution, gif animation can be huge, keep this small
-        'frame_number' : 10,        # number of frames in the animation
-        'snap_period_millis' : 200, # time interval between two snapshots
-        'gif_period_millis' : 50    # time interval in the animated gif
-    }
 }
 
 # Path to icons for the software buttons (no hardware buttons setup)
 SOFTWARE_BUTTONS = {
     "None": {
-        "icon" : os.path.join("ressources","ic_photo.png")
-        },
+        "icon" : os.path.join("assets", "ic_photo.png")
+    },
     "Four": {
-        "icon" : os.path.join("ressources","ic_portrait.png")
-        },
-    "Animation": {
-        "icon" : os.path.join("ressources","ic_anim.png")
-        }
+        "icon" : os.path.join("assets", "ic_portrait.png")
+    },
 }
 
 # piCamera Builtin effects selection list
@@ -82,7 +73,7 @@ SOFTWARE_BUTTONS = {
 # - "effect_name": the name of the piCamera image_effect
 # - "effect_icon": path to the thumbnail that represents this effect (MUST be square)
 # - "effect_params": (opt) parameters for the effect (see image_effect_parameter)
-EFFECTS_THUMB_DIR = os.path.join("ressources","effects")
+EFFECTS_THUMB_DIR = os.path.join("assets", "effects")
 # ordered list of IMAGE_EFFECTS keys (only these will be displayed)
 IMAGE_EFFECTS_LIST = [
     "none",
@@ -104,66 +95,66 @@ IMAGE_EFFECTS_LIST = [
 IMAGE_EFFECTS = {
     "none": {
         "effect_name":"none",
-        "effect_icon": os.path.join(EFFECTS_THUMB_DIR,"eff_none.png")
+        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "eff_none.png")
     },
     # solarize would require some image analysis in order to set the right parameters
     "solarize": { 
         "effect_name":"solarize",
-        "effect_icon": os.path.join(EFFECTS_THUMB_DIR,"eff_solarize.png")
+        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "eff_solarize.png")
     },
     "oilpaint": {
         "effect_name":"oilpaint",
-        "effect_icon": os.path.join(EFFECTS_THUMB_DIR,"eff_oilpaint.png")
+        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "eff_oilpaint.png")
     },
     "cartoon": {
         "effect_name":"cartoon",
-        "effect_icon": os.path.join(EFFECTS_THUMB_DIR,"eff_cartoon.png")
+        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "eff_cartoon.png")
     },
     "colorswap0": {
         "effect_name":"colorswap",
-        "effect_icon": os.path.join(EFFECTS_THUMB_DIR,"eff_colorswap.png"),
+        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "eff_colorswap.png"),
         "effect_params" : 0 # green faces
     },
     "colorswap1": {
         "effect_name":"colorswap",
-        "effect_icon": os.path.join(EFFECTS_THUMB_DIR,"eff_colorswap1.png"),
+        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "eff_colorswap1.png"),
         "effect_params" : 1  # purple faces
     },
     "negative": {
         "effect_name":"negative",
-        "effect_icon": os.path.join(EFFECTS_THUMB_DIR,"eff_negative.png")
+        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "eff_negative.png")
     },
     "pastel": {
         "effect_name":"pastel",
-        "effect_icon": os.path.join(EFFECTS_THUMB_DIR,"eff_pastel.png")
+        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "eff_pastel.png")
     },
     "posterise": {
         "effect_name":"posterise",
-        "effect_icon": os.path.join(EFFECTS_THUMB_DIR,"eff_posterise.png"),
+        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "eff_posterise.png"),
         "effect_params" : 8
     },
     "gpen": {
         "effect_name":"gpen",
-        "effect_icon": os.path.join(EFFECTS_THUMB_DIR,"eff_gpen.png")
+        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "eff_gpen.png")
     },
     "sketch": {
         "effect_name":"sketch",
-        "effect_icon": os.path.join(EFFECTS_THUMB_DIR,"eff_sketch.png")
+        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "eff_sketch.png")
     },
     "watercolor1": {
         "effect_name" : "watercolor",
-        "effect_icon": os.path.join(EFFECTS_THUMB_DIR,"eff_watercolor_170_25.png"),
+        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "eff_watercolor_170_25.png"),
         "effect_params" : (170,25) # cyan
     },
     "colorpoint1": {
         "effect_name" : "colorpoint",
-        "effect_icon": os.path.join(EFFECTS_THUMB_DIR,"eff_colorpoint1.png"),
+        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "eff_colorpoint1.png"),
         "effect_params" : 1 # keep red/yellow, desaturate everything else
     }
 }
 
 # GPIO pin / Snapshots modes mapping
-# 'button_pins' are matched in this order ["No effect", "Four images", "Animation"]
+# 'button_pins' are matched in this order ["No effect", "Four images"]
 # 'pull_up_down' activates a pull_up or a pull_down on the GPIO pin itself (no external resistor needed)
 # 'active_state' should be 1 or 0: this is the value returned by the GPIO when switch is activated
 HARDWARE_BUTTONS = {
@@ -176,12 +167,12 @@ HARDWARE_BUTTONS = {
 #shortcut list must be valid tkinter events
 #See : http://effbot.org/tkinterbook/tkinter-events-and-bindings.htm
 ACTIONS_KEYS_MAPPING = {
-    "snap_None": ["s","S","<F1>"],
-    "snap_Four": ["f","F","<F2>"],
-    "snap_Animation": ["a","A","<F3>"],
-    "send_email":["e","@"],
-    "configure":["<Escape>"]
-    #,"send_print":["P"] #Uncomment if you want to a keyboard shortcut for printing
+    "snap_None": ["s", "S", "<F1>"],
+    "snap_Four": ["f", "F", "<F2>"],
+    "send_email":["e", "@"],
+    "configure":["<Escape>"],
+    "quit":["q", "Q"],
+    #, "send_print":["p", "P"] #Uncomment if you want to a keyboard shortcut for printing
 }
 
 #Image list for in-preview countdown
@@ -191,20 +182,20 @@ ACTIONS_KEYS_MAPPING = {
 # ...
 # last image of the list will be used for greater counts
 # (e.g. during the first 5 secs of a 10 secs countdown in this case)
-COUNTDOWN_OVERLAY_IMAGES=[
-    os.path.join("ressources","count_down_1.png"),
-    os.path.join("ressources","count_down_2.png"),
-    os.path.join("ressources","count_down_3.png"),
-    os.path.join("ressources","count_down_4.png"),
-    os.path.join("ressources","count_down_5.png"),
-    os.path.join("ressources","count_down_ready.png")]
+COUNTDOWN_OVERLAY_IMAGES = [
+    os.path.join("assets", "countdown", "1.png"),
+    os.path.join("assets", "countdown", "2.png"),
+    os.path.join("assets", "countdown", "3.png"),
+    os.path.join("assets", "countdown", "4.png"),
+    os.path.join("assets", "countdown", "5.png"),
+    os.path.join("assets", "countdown", "ready.png")]
 # this defines the height ratio of the countdown images wrt. the preview size
 COUNTDOWN_IMAGE_MAX_HEIGHT_RATIO = 0.2 #[0. - 1.] range
 
-# Path to button icon ressources
-EMAIL_BUTTON_IMG  = os.path.join("ressources","ic_email.png")
-PRINT_BUTTON_IMG  = os.path.join("ressources","ic_print.png")
-EFFECTS_BUTTON_IMG = os.path.join("ressources","ic_effects.png")
+# Path to button icon assets
+EMAIL_BUTTON_IMG   = os.path.join("assets", "ic_email.png")
+PRINT_BUTTON_IMG   = os.path.join("assets", "ic_print.png")
+EFFECTS_BUTTON_IMG = os.path.join("assets", "ic_effects.png")
 
 # Interval in ms between two authentication tokens refreshing
 OAUTH2_REFRESH_PERIOD = 1800000 # interval between two OAuth2 token refresh (ms)
@@ -213,7 +204,7 @@ OAUTH2_REFRESH_PERIOD = 1800000 # interval between two OAuth2 token refresh (ms)
 HARDWARE_POLL_PERIOD = 100
 
 # Path of various log and configuration files
-CONFIGURATION_FILE = "configuration.json"
-APP_ID_FILE        = "google_client_id.json"
-CREDENTIALS_STORE_FILE = "google_credentials.dat"
-EMAILS_LOG_FILE = os.path.join("..","sendmail.log") # you should activate 'enable_mail_logging' key in configuration.json
+CONFIGURATION_FILE     = os.path.join("..", "configuration.json")
+APP_ID_FILE            = os.path.join("..", "google_client_id.json")
+CREDENTIALS_STORE_FILE = os.path.join("..", "google_credentials.dat")
+EMAILS_LOG_FILE        = os.path.join("..", "sendmail.log") # you should activate 'enable_mail_logging' key in configuration.json

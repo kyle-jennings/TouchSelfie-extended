@@ -1,27 +1,27 @@
-"""
-New interface for the photobooth
-
-@author: Laurent Alacoque 2o18
-"""
 import logging
-log = logging.getLogger(__name__)
-logging.getLogger("PIL").setLevel(logging.WARNING)
-logging.basicConfig(format='%(asctime)s|%(name)-16s| %(levelname)-8s| %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S',
-            filename='touchselfie.log',
-            filemode='w',
-            level = logging.DEBUG)
-
-from Tkinter import *
 import tkMessageBox
+import time
+import traceback
+import os
+import subprocess
+import oauth2services
+from Tkinter import *
 from PIL import ImageTk,Image
-#from tkkb import Tkkb
 from mykb import TouchKeyboard
 from tkImageLabel import ImageLabel
 from constants import *
-import time
-import traceback
+from LongPressDetector import LongPressDetector
 
+
+log = logging.getLogger(__name__)
+logging.getLogger("PIL").setLevel(logging.WARNING)
+logging.basicConfig(
+    format='%(asctime)s|%(name)-16s| %(levelname)-8s| %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    filename='touchselfie.log',
+    filemode='w',
+    level = logging.DEBUG
+)
 
 try:
     import cups
@@ -30,11 +30,6 @@ try:
 except ImportError:
     log.warning("Cups not installed. removing option")
     printer_selection_enable = False
-
-import os
-import subprocess
-
-import oauth2services
 
 try:
     import hardware_buttons as HWB
@@ -56,51 +51,10 @@ except ImportError:
         import fakehardware as mycamera
         from fakehardware import Color
 
-# Helper class to launch function after a long-press
-class LongPressDetector:
-    """Helper class that calls a callback after a long press/click"""
-# call_back will get the long_click duration as parameter
-    def __init__(self, root, call_back, long_press_duration = 1000 ):
-        """Creates the LongPressDetector
-
-        Arguments:
-            root (Tk Widget): parent element for the event binding
-            call_back       : a callback function with prototype callback(press_duration_ms)
-            long_press_duration : amount of milliseconds after which we consider this press is long
-        """
-        self.ts=0
-        self.root = root
-        self.call_back = call_back
-        self._suspend = False
-        self.long_press_duration = long_press_duration
-        root.bind("<Button-1>",self.__click)
-        root.bind("<ButtonRelease-1>",self.__release)
-
-
-    def suspend(self):
-        """suspend longpress action"""
-        self._suspend = True
-
-    def activate(self):
-        """reactivate longpress action"""
-        self._suspend = False
-
-
-    def __click(self,event):
-        self.ts = event.time
-
-    def __release(self,event):
-        if self._suspend:
-            #cancel this event
-            self.ts = event.time
-            return
-        duration = event.time - self.ts
-        if self.call_back != None and duration > self.long_press_duration:
-            self.call_back(duration)
 
 class UserInterface():
     """A User Interface for the photobooth"""
-    def __init__(self, config, window_size=None, poll_period=HARDWARE_POLL_PERIOD, log_level=logging.WARNING):
+    def __init__(self, config, window_size=None, poll_period=HARDWARE_POLL_PERIOD, log_level=logging.INFO):
         """Constructor for the UserInterface object
 
         Arguments:
@@ -109,50 +63,58 @@ class UserInterface():
             poll_period : polling period for hardware buttons changes (ms)
             log_level : amount of log (see python module 'logging')
         """
-        self.log = logging.getLogger("user_interface")
-        self.log_level = log_level
-        self.log.setLevel(self.log_level)
-        upload_images = config.enable_upload
-        send_emails   = config.enable_email
-        hardware_buttons = config.enable_hardware_buttons
-        send_prints = config.enable_print
-        image_effects = config.enable_effects
-        selected_printer = config.selected_printer
+        upload_images      = config.enable_upload
+        send_emails        = config.enable_email
+        hardware_buttons   = config.enable_hardware_buttons
+        send_prints        = config.enable_print
+        image_effects      = config.enable_effects
+        selected_printer   = config.selected_printer
 
-        self.root = Tk()
-
-        ## Auto hide Mouse cursor
-
-        #Events to enable/disable cursor based on motion
-        #on_motion() is called on mouse motion and sets a boolean
-        #enable_cursor is a fast loop that checks this boolean and enable the cursor
-        #check_and_disable_cursor is a slow loop that checks this boolean and resets it
+        self.log           = logging.getLogger("UserInterface")
+        self.log_level     = log_level
         self.cursor_motion = False
+        self.root          = Tk() # this is the window GUI
+        self.full_screen   = config.full_screen
+        self.selected_image_effect = 'none'
+        self.send_prints = send_prints
+        self.send_emails = send_emails
+        self.image_effects = image_effects
+        self.log.setLevel(self.log_level)
+        ## Auto hide Mouse cursor
+        '''
+        Events to enable/disable cursor based on motion
+        on_motion() is called on mouse motion and sets a boolean
+        enable_cursor is a fast loop that checks this boolean and enable the cursor
+        check_and_disable_cursor is a slow loop that checks this boolean and resets it
+        '''
         def enable_cursor():
             if self.cursor_motion:
-                self.root.config(cursor="")
-            self.enable_cursor_after_id = self.root.after(200,enable_cursor)
+                self.root.config(cursor = "")
+            self.enable_cursor_after_id = self.root.after(200, enable_cursor)
+
         def check_and_disable_cursor():
             if self.cursor_motion == False:
                 #remove the cursor,reactivated by motion
-                self.root.config(cursor="none")
+                self.root.config(cursor = "none")
             else:
                 #erase it
                 self.cursor_motion = False
-            self.disable_cursor_after_id = self.root.after(3000,check_and_disable_cursor)
+            self.disable_cursor_after_id = self.root.after(3000, check_and_disable_cursor)
+        
         def on_motion(event):
             self.cursor_motion = True
-        self.root.bind("<Motion>",on_motion)
-        self.enable_cursor_after_id = self.root.after(100,enable_cursor)
-        self.disable_cursor_after_id = self.root.after(2000,check_and_disable_cursor)
+
+        self.root.bind("<Motion>", on_motion)
+        self.enable_cursor_after_id = self.root.after(100, enable_cursor)
+        self.disable_cursor_after_id = self.root.after(2000, check_and_disable_cursor)
         ## End of Auto-hide mouse cursor
 
         ## Bind keyboard keys to actions
-        def install_key_binding(action,function):
+        def install_key_binding(action, function):
             if action in ACTIONS_KEYS_MAPPING.keys():
                 for key in ACTIONS_KEYS_MAPPING[action]:
                     self.log.debug("Installing keybinding '%s' for action '%s'"%(key,action))
-                    self.root.bind(key,function)
+                    self.root.bind(key, function)
             else:
                 self.log.warning("install_key_binding: no action '%s'"%action)
 
@@ -163,73 +125,68 @@ class UserInterface():
                     callback()
             return safe_execute
             
-        install_key_binding("snap_None",safe_execute_factory(lambda *args: self.snap("None")))
-        install_key_binding("snap_Four",safe_execute_factory(lambda *args: self.snap("Four")))
-        install_key_binding("snap_Animation",safe_execute_factory(lambda *args: self.snap("Animation")))
-        install_key_binding("send_email",safe_execute_factory(lambda *args: self.send_email()))
-        install_key_binding("configure",safe_execute_factory(lambda *args: self.long_press_cb(self)))
-        install_key_binding("send_print",safe_execute_factory(lambda *args: self.send_print()))
-        ## Bind keyboard keys to actions
+        install_key_binding("snap_None", safe_execute_factory(lambda *args: self.snap("None")))
+        install_key_binding("snap_Four", safe_execute_factory(lambda *args: self.snap("Four")))
+        install_key_binding("send_email", safe_execute_factory(lambda *args: self.send_email()))
+        install_key_binding("send_print", safe_execute_factory(lambda *args: self.send_print()))
+        install_key_binding("configure", safe_execute_factory(lambda *args: self.long_press_cb(self)))
+
         
-        self.full_screen = config.full_screen
+        ## Bind keyboard keys to actions
         if config.full_screen:
-            self.root.attributes("-fullscreen",True)
+            self.root.attributes("-fullscreen", True)
             self.root.update()
-            global SCREEN_H,SCREEN_W
+            global SCREEN_H, SCREEN_W
             SCREEN_W = self.root.winfo_width()
             SCREEN_H = self.root.winfo_height()
-            self.size=(SCREEN_W,SCREEN_H)
-            window_size= self.size
+            self.size = (SCREEN_W, SCREEN_H)
+            window_size = self.size
 
-        self.root.configure(background='black')
+        self.root.configure(background = BG_COLOR)
         if window_size is not None:
-            self.size=window_size
+            self.size = window_size
         else:
-            self.size=(640,480)
-        self.root.geometry('%dx%d+0+0'%(self.size[0],self.size[1]))
+            self.size = (640,480)
+        self.root.geometry('%dx%d+0+0'%(self.size[0], self.size[1]))
 
 
         #Configure Image holder
-        self.image = ImageLabel(self.root, size=self.size)
-        self.image.place(x=0, y=0, relwidth = 1, relheight=1)
-        self.image.configure(background='black')
+        self.image = ImageLabel(self.root, size = self.size)
+        self.image.place(x = 0, y = 0, relwidth = 1, relheight = 1)
+        self.image.configure(background = BG_COLOR)
 
 
         #Create sendprint button
-        self.send_prints = send_prints
+
         if self.send_prints:
             print_image = Image.open(PRINT_BUTTON_IMG)
-            w,h=print_image.size
+            w,h = print_image.size
             self.print_imagetk = ImageTk.PhotoImage(print_image)
-            self.print_btn = Button(self.root, image = self.print_imagetk, height=h, width=w, command= self.send_print)
+            self.print_btn = Button(self.root, image = self.print_imagetk, height = h, width = w, command= self.send_print)
             self.print_btn.place(x=2, y=0)
-            self.print_btn.configure(background= 'black')
+            self.print_btn.configure(background= BG_COLOR)
 
-        self.send_emails = send_emails
-        
         #Create sendmail Button
         if self.send_emails:
             mail_image = Image.open(EMAIL_BUTTON_IMG)
             w,h = mail_image.size
             self.mail_imagetk = ImageTk.PhotoImage(mail_image)
-            self.mail_btn  = Button(self.root,image = self.mail_imagetk, height=h, width=w, command=self.send_email )
+            self.mail_btn  = Button(self.root,image = self.mail_imagetk, height = h, width = w, command=self.send_email )
             self.mail_btn.place(x=SCREEN_W-w-2, y=0)
-            self.mail_btn.configure(background = 'black')
+            self.mail_btn.configure(background = BG_COLOR)
             
         #Create image_effects button
-        self.image_effects = image_effects
-        self.selected_image_effect='none'
         if self.image_effects:
             effects_image = Image.open(EFFECTS_BUTTON_IMG)
             w,h = effects_image.size
             self.effects_imagetk = ImageTk.PhotoImage(effects_image)
-            self.effects_btn = Button(self.root, image = self.effects_imagetk, height=h, width=w, command=self.__choose_effect)
-            self.effects_btn.place(x=SCREEN_W-w-2,y=int((SCREEN_H-h)/2))
-            self.effects_btn.configure(background = 'black')
+            self.effects_btn = Button(self.root, image = self.effects_imagetk, height = h, width = w, command=self.__choose_effect)
+            self.effects_btn.place(x = SCREEN_W-w-2,y = int((SCREEN_H-h)/2))
+            self.effects_btn.configure(background = BG_COLOR)
             
         #Create status line
         self.status_lbl = Label(self.root, text="", font=("Helvetica", 20))
-        self.status_lbl.config(background='black', foreground='white')
+        self.status_lbl.config(background = BG_COLOR, foreground=FG_COLOR)
         self.status_lbl.place(x=0 + 10, y=0)
 
         #State variables
@@ -265,15 +222,15 @@ class UserInterface():
             enable_upload = upload_images,
             log_level = self.log_level)
 
-        #Hardware buttons
+        # Hardware buttons - these would be used to start various picture modes
         if hardware_buttons:
             self.buttons = HWB.Buttons( buttons_pins = HARDWARE_BUTTONS['button_pins'], mode = HARDWARE_BUTTONS["pull_up_down"], active_state = HARDWARE_BUTTONS["active_state"])
         else:
             self.buttons = HWB.Buttons( buttons_pins = [], mode="pull_down", active_state=0)
 
+        # creates on screen buttons - these would be used to start various picture modes
         if not self.buttons.has_buttons():
-            #oh oh, we don't have hardware buttons, create soft ones
-            self.log.warning("No hardware buttons found, generating software buttons")
+            self.log.warning("No hardware buttons found, generating on screen buttons")
 
             self.software_buttons_images = {}
             self.software_buttons = []
@@ -282,14 +239,16 @@ class UserInterface():
             # first, open images and load them + compute the total width
             for i, effect in enumerate(SOFTWARE_BUTTONS):
                 effect_image = Image.open(SOFTWARE_BUTTONS[effect]['icon'])
-                w,h = effect_image.size
+                w, h = effect_image.size
                 tkimage = ImageTk.PhotoImage(effect_image)
                 self.software_buttons_images[effect] = {}
                 self.software_buttons_images[effect]['image'] = tkimage
                 self.software_buttons_images[effect]['size'] = (w,h)
                 total_width = total_width + w
+            
             #we have the total size, compute padding
             padding = int((self.size[0] - total_width) / (len(SOFTWARE_BUTTONS) - 1))
+            
             # decurrying of callback parameter
             def snap_factory(effect):
                 def snap_fun():
@@ -298,42 +257,45 @@ class UserInterface():
                 return snap_fun
 
             for i, effect in enumerate(SOFTWARE_BUTTONS):
-                #print effect, SOFTWARE_BUTTONS[effect]
+                # print effect, SOFTWARE_BUTTONS[effect]
                 effect_image = Image.open(SOFTWARE_BUTTONS[effect]['icon'])
-                w,h = self.software_buttons_images[effect]['size']
+                w, h = self.software_buttons_images[effect]['size']
                 Y = self.size[1] - h
                 tkimage = self.software_buttons_images[effect]['image']
 
-                btn = Button(self.root, image=tkimage, width = w, height= h, command=snap_factory(effect))
+                btn = Button(self.root, image = tkimage, width = w, height =  h, command = snap_factory(effect))
                 self.software_buttons.append(btn)
                 btn.place(x=X_,y=Y)
-                btn.configure(background = 'black')
+                btn.configure(background = BG_COLOR)
                 X_ = X_ + w + padding
 
         #Camera
         self.camera = mycamera.PiCamera()
         self.camera.annotate_text_size = 160 # Maximum size
-        self.camera.annotate_foreground = Color('white')
-        self.camera.annotate_background = Color('black')
+        self.camera.annotate_foreground = Color(FG_COLOR)
+        self.camera.annotate_background = Color(BG_COLOR)
 
         #Callback for long-press on screen
         def long_press_cb(time):
             #Create a toplevel window with checkboxes and a "Quit application button"
             top = Toplevel(self.root)
-            qb = Button(top,text="Quit Application",command=self.root.destroy)
-            qb.pack(pady=20)
+            qb = Button(top,text = "Quit Application", command = self.root.destroy)
+            qb.pack(pady = 20)
 
             mail_enable = IntVar()
             upload_enable = IntVar()
+            
             if self.send_emails: mail_enable.set(1)
             else: mail_enable.set(0)
+            
             if self.upload_images: upload_enable.set(1)
             else: upload_enable.set(0)
 
-            me = Checkbutton(top, text="Enable Email sending", variable=mail_enable,anchor=W)
-            me.pack(padx=20,pady=10,fill=X)
-            ue = Checkbutton(top, text="Enable Uploading", variable=upload_enable,anchor=W)
-            ue.pack(padx=20,pady=10,fill=X)
+            me = Checkbutton(top, text = "Enable Email sending", variable = mail_enable, anchor = W)
+            me.pack(padx = 20,pady = 10,fill = X)
+            
+            ue = Checkbutton(top, text = "Enable Uploading", variable = upload_enable, anchor = W)
+            ue.pack(padx = 20,pady = 10,fill = X)
 
             def ok():
                 enable_email = (mail_enable.get() != 0)
@@ -341,28 +303,11 @@ class UserInterface():
                 self.__change_services(enable_email,enable_upload)
                 top.destroy()
 
-            b=Button(top, text="OK", command=ok)
-            b.pack(pady=20)
+            b = Button(top, text = "OK", command = ok)
+            b.pack(pady = 20)
             self.root.wait_window(top)
-
-
-
-
-        self.long_press_cb= long_press_cb
-        self.longpress_obj= LongPressDetector(self.root,long_press_cb)
-
-    def __change_services(self,email,upload):
-        """Called whenever we should change the state of oauth2services"""
-        self.oauth2service.enable_email = email
-        self.oauth2service.enable_upload = upload
-        self.send_emails = email
-        self.upload_images = upload
-        #TODO show/hide button = oauth2services.OAuthServices(
-        if email:
-            self.mail_btn.configure(state=NORMAL)
-        else:
-            self.mail_btn.configure(state=DISABLED)
-
+        self.long_press_cb = long_press_cb
+        self.longpress_obj = LongPressDetector(self.root, long_press_cb)
 
     def __del__(self):
         """Destructor"""
@@ -372,6 +317,10 @@ class UserInterface():
             self.camera.close()
         except:
             pass
+
+    def quit():
+        self.log.debug('exiting')
+        self.root.destroy;
 
     def status(self, status_text):
         """Update the application status line with status_text"""
@@ -384,21 +333,21 @@ class UserInterface():
         self.poll_after_id = self.root.after(self.poll_period, self.run_periodically)
         self.root.mainloop()
 
-
     def run_periodically(self):
         """hardware poll function launched by start_ui"""
         if not self.suspend_poll == True:
-            #self.status('')
+
             btn_state = self.buttons.state()
             if btn_state == 1:
                 self.snap("None")
             elif btn_state == 2:
                 self.snap("Four")
-            elif btn_state == 3:
-                self.snap("Animation")
         self.poll_after_id = self.root.after(self.poll_period, self.run_periodically)
 
-    def snap(self,mode="None"):
+    def singleSnap():
+        self.log.error('taking a single photo');
+
+    def snap(self, mode = "None"):
         """Snap a shot in given mode
 
         This will start a countdown preview and:
@@ -408,13 +357,11 @@ class UserInterface():
             - upload them to Google Photos
 
         Arguments:
-            mode ("None"|"Four"|"Animation") : the selected mode
+            mode ("None"|"Four") : the selected mode
         """
         self.log.info("Snaping photo (mode=%s)" % mode)
         self.suspend_poll = True
-        # clear status
         self.status("")
-        # keep track of what's happening
         picture_taken = False
         picture_saved = False
         picture_uploaded = False
@@ -440,20 +387,23 @@ class UserInterface():
                         self.camera.image_effect_params = IMAGE_EFFECTS[self.selected_image_effect]['effect_params']
                 except:
                     self.log.error("snap: Error setting effect to %s"%self.selected_image_effect)
-            # 1. Start Preview
             self.camera.resolution = snap_size
             self.camera.start_preview()
+            
+            # 1. Start Preview
             # 2. Show initial countdown
             # 3. Take snaps and combine them
             if mode == 'None':
                 self.log.debug("snap: single picture")
-                self.__show_countdown(config.countdown1,annotate_size = 160)
+                self.__show_countdown(TIMER, annotate_size = 80)
+
                 # simple shot with logo
                 self.camera.capture('snapshot.jpg')
                 self.camera.stop_preview()
 
                 snapshot = Image.open('snapshot.jpg')
                 picture_taken = True
+                
                 if config.logo_file is not None :
                     try:
                         self.log.debug("snap: adding logo")
@@ -469,11 +419,13 @@ class UserInterface():
                     except Exception as e:
                         self.log.warning("Could not add logo to image : %r"%e)
                 self.log.debug("snap: saving snapshot")
+                
                 snapshot.save('snapshot.jpg')
                 snap_filename = 'snapshot.jpg'
+                
                 self.last_picture_mime_type = 'image/jpg'
 
-            elif mode == 'Four':
+            else :
                 # collage of four shots
                 # compute collage size
                 self.log.debug("snap: starting collage of four")
@@ -482,13 +434,13 @@ class UserInterface():
                 w_ = w * 2
                 h_ = h * 2
                 # take 4 photos and merge into one image.
-                self.__show_countdown(config.countdown1,annotate_size = 80)
+                self.__show_countdown(TIMER, annotate_size = 80)
                 self.camera.capture('collage_1.jpg')
-                self.__show_countdown(config.countdown2,annotate_size = 80)
+                self.__show_countdown(TIMER, annotate_size = 80)
                 self.camera.capture('collage_2.jpg')
-                self.__show_countdown(config.countdown2,annotate_size = 80)
+                self.__show_countdown(TIMER, annotate_size = 80)
                 self.camera.capture('collage_3.jpg')
-                self.__show_countdown(config.countdown2,annotate_size = 80)
+                self.__show_countdown(TIMER, annotate_size = 80)
                 self.camera.capture('collage_4.jpg')
                 # Assemble collage
                 self.camera.stop_preview()
@@ -502,14 +454,12 @@ class UserInterface():
                 picture_taken = True
                 #paste the collage enveloppe if it exists
                 try:
-                    self.log.debug("snap: Adding  the collage cover")
+                    self.log.debug("snap: Adding the collage cover")
                     front = Image.open(EFFECTS_PARAMETERS[mode]['foreground_image'])
                     front = front.resize((w_,h_))
                     front = front.convert('RGBA')
                     snapshot = snapshot.convert('RGBA')
-                    #print snapshot
-                    #print front
-                    snapshot=Image.alpha_composite(snapshot,front)
+                    snapshot=Image.alpha_composite(snapshot, front)
 
                 except Exception, e:
                     self.log.error("snap: unable to paste collage cover: %s"%repr(e))
@@ -522,40 +472,10 @@ class UserInterface():
                 snap_filename = 'collage.jpg'
                 self.last_picture_mime_type = 'image/jpg'
 
-            elif mode == 'Animation':
-                # animated gifs
-                # below is taken from official PiCamera doc and adapted
-                # take GIF_FRAME_NUMBER pictures resize to GIF_SIZE
-                self.log.debug("snap: starting animation")
-                self.__show_countdown(config.countdown1,annotate_size = 50)
-                for i, filename in enumerate(self.camera.capture_continuous('animframe-{counter:03d}.jpg')):
-                    self.log.debug("snap:animation: capturing image %d"%i)
-                    # print(filename)
-                    # TODO : enqueue the filenames and use that in the command line
-                    time.sleep(EFFECTS_PARAMETERS[mode]['snap_period_millis'] / 1000.0)
-                    # preload first frame because convert can be slow
-                    if i == 0:
-                        self.log.debug("changing " + filename)
-                        self.image.load(str(filename))
-                    if i >= EFFECTS_PARAMETERS[mode]['frame_number']:
-                        break
-                self.camera.stop_preview()
-
-                # Assemble images using image magick
-                self.status("Assembling animation")
-                self.log.debug("snap: assembling animation")
-                command_string = "convert -delay " + str(EFFECTS_PARAMETERS[mode]['gif_period_millis']) + " animframe-*.jpg animation.gif"
-                import os
-                os.system(command_string)
-                picture_taken = True
-                self.status("")
-                snap_filename = 'animation.gif'
-                self.last_picture_mime_type = 'image/gif'
-            
             # cancel image_effect (hotfix: effect was not reset to 'none' after each shot)
             self.selected_image_effect = 'none'
 
-            # Here, the photo or animation is in snap_filename
+            # Here, the photo is in snap_filename
             import os
             if os.path.exists(snap_filename):
                 self.last_picture_filename = snap_filename
@@ -592,8 +512,6 @@ class UserInterface():
                                 new_filename = "%s-snap.jpg" % self.last_picture_timestamp
                             elif mode == 'Four':
                                 new_filename = "%s-collage.jpg" % self.last_picture_timestamp
-                            elif mode == 'Animation':
-                                new_filename = "%s-anim.gif" % self.last_picture_timestamp
 
                             # Try to write the picture we've just taken to ALL plugged-in usb keys
                             if config.archive_to_all_usb_drives:
@@ -647,7 +565,6 @@ class UserInterface():
                         self.log.exception("Image %s couldn't be saved"%self.last_picture_title)
                         picture_saved = False
                         
-
             else:
                 # error
                 self.status("Snap failed :(")
@@ -666,19 +583,139 @@ class UserInterface():
             return None
         return snap_filename
 
-    def __countdown_set_led(self,state):
+    def refresh_auth(self):
+        """ refresh the oauth2 service (regularly called)"""
+        # useless if we don't need image upload
+        if not (self.upload_images or self.send_emails):
+            if self.send_emails:
+                self.signed_in = True #Will fail otherwise
+                self.mail_btn.configure(state=NORMAL)
+            return
+        # actual refresh
+        if self.oauth2service.refresh():
+            if self.send_emails:
+                self.mail_btn.configure(state=NORMAL)
+            self.signed_in = True
+        else:
+            if self.send_emails:
+                self.mail_btn.configure(state=DISABLED)
+            self.signed_in = False
+            self.log.error('refresh_auth: refresh failed')
+
+        #relaunch periodically
+        self.auth_after_id = self.root.after(OAUTH2_REFRESH_PERIOD, self.refresh_auth)
+
+    def googleUpload(self,filen, title='Photobooth photo', caption = None):
+        """Upload a picture to Google Photos
+
+        Arguments:
+            filen (str) : path to the picture to upload
+            title       : title of the picture
+            caption     : optional caption for the picture
+        """
+        if not self.upload_images:
+            return
+        #upload to picasa album
+        if caption is None:
+            caption = config.photoCaption
+        if config.albumID == 'None':
+            config.albumID = None
+
+        self.oauth2service.upload_picture(filen, config.albumID, title, caption)
+
+    def send_email(self):
+        """Ask for an email address and send the last picture to it
+
+        This will popup a touch keyboard
+        """
+        if not self.send_emails:
+            return
+        if self.signed_in and self.tkkb is None:
+            self.email_addr.set("")
+            self.suspend_poll = True
+            self.longpress_obj.suspend()
+            self.tkkb = Toplevel(self.root)
+            keyboard_parent = self.tkkb
+            consent_var = IntVar()
+            if self.config.enable_email_logging:
+                #build consent control
+                main_frame=Frame(self.tkkb)
+                consent_frame = Frame(self.tkkb, bg=FG_COLOR, pady=20)
+                consent_var.set(1)
+                consent_cb = Checkbutton(consent_frame,text="Ok to log my mail address", variable=consent_var, font="Helvetica",bg=FG_COLOR, fg='black')
+                consent_cb.pack(fill=X)
+                consent_frame.pack(side=BOTTOM,fill=X)
+                main_frame.pack(side=TOP,fill=Y)
+                keyboard_parent=main_frame
+                def onEnter(*args):
+                    self.close_keyboard()
+                    res = self.__send_picture()
+                    if not res:
+                        self.status("Error sending email")
+                        self.log.error("Error sending email")
+                    self.__log_email_address(self.email_addr.get(),consent_var.get()!=0, res, self.last_picture_filename)
+                TouchKeyboard(keyboard_parent,self.email_addr, onEnter = onEnter)
+                self.tkkb.wm_attributes("-topmost", 1)
+                self.tkkb.transient(self.root)
+                self.tkkb.protocol("WM_DELETE_WINDOW", self.close_keyboard)
+
+            else:
+                def onEnter(*args):
+                    self.close_keyboard()
+                    self.__send_picture()
+
+                TouchKeyboard(keyboard_parent,self.email_addr, onEnter = onEnter)
+                self.tkkb.wm_attributes("-topmost", 1)
+                self.tkkb.transient(self.root)
+                self.tkkb.protocol("WM_DELETE_WINDOW", self.close_keyboard)
+
+    def send_print(self):
+        self.log.debug("send_print: Printing image")
+        try:
+            conn = cups.Connection()
+            printers = conn.getPrinters()
+            default_printer = printers.keys()[self.selected_printer]#defaults to the first printer installed
+            cups.setUser(getpass.getuser())
+            conn.printFile(default_printer, self.last_picture_filename, self.last_picture_title, {'fit-to-page':'True'})
+            self.log.info('send_print: Sending to printer...')
+        except:
+            self.log.exception('print failed')
+            self.status("Print failed :(")
+        self.log.info("send_print: Image printed")
+
+    def close_keyboard(self):
+        """Kill the popup keyboard"""
+        if self.tkkb is not None:
+            self.tkkb.destroy()
+            self.tkkb = None
+            self.suspend_poll = False
+        self.root.after(300,self.longpress_obj.activate)
+
+    def __change_services(self, email, upload):
+        """Called whenever we should change the state of oauth2services"""
+        self.oauth2service.enable_email = email
+        self.oauth2service.enable_upload = upload
+        self.send_emails = email
+        self.upload_images = upload
+        #TODO show/hide button = oauth2services.OAuthServices(
+        if email:
+            self.mail_btn.configure(state=NORMAL)
+        else:
+            self.mail_btn.configure(state=DISABLED)
+
+    def __countdown_set_led(self, state):
         ''' if you have a hardware led on the camera, link it to this'''
         try:
             self.camera.led = state
         except:
             pass
 
-    def __show_countdown(self,countdown,annotate_size=160):
+    def __show_countdown(self, countdown, annotate_size = 160):
         '''wrapper function to select between overlay and text countdowns'''
-        #self.__show_text_countdown(countdown,annotate_size=annotate_size)
+        # self.__show_text_countdown(countdown,annotate_size=annotate_size)
         self.__show_overlay_countdown(countdown)
 
-    def __show_text_countdown(self,countdown,annotate_size=160):
+    def __show_text_countdown(self, countdown, annotate_size = 160):
         ''' display countdown. the camera should have a preview active and the resolution must be set'''
         led_state = False
         self.__countdown_set_led(led_state)
@@ -705,7 +742,7 @@ class UserInterface():
                     self.__countdown_set_led(led_state)
         self.camera.annotate_text = ""
 
-    def __show_overlay_countdown(self,countdown):
+    def __show_overlay_countdown(self, countdown):
         """Display countdown as images overlays"""
         #COUNTDOWN_OVERLAY_IMAGES
         led_state = False
@@ -713,12 +750,6 @@ class UserInterface():
 
         self.camera.preview.fullscreen = True
         self.camera.preview.hflip = True  #Mirror effect for easier selfies
-        #for some reason camera.preview.window =(0,0,0,0)
-        #bbox = self.camera.preview.window
-        #preview_width = bbox[2]
-        #preview_height = bbox[3]
-        #preview_size = self.camera.resolution
-
 
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
@@ -729,18 +760,18 @@ class UserInterface():
         preview_height = screen_height
 
         overlay_height = int(preview_height * COUNTDOWN_IMAGE_MAX_HEIGHT_RATIO)
-        #print preview_size
-        #print preview_width, preview_height, overlay_height
-
-        ## prepare overlay images (resize)
+        
+        # collects the countdown images into an array that is the same size as the countdown
         overlay_images = []
         for i in range(countdown):
+            image_num = countdown -1 -i #3-0-0 ==> 4 ; 3-1-2 ==> 0
+            self.log.debug(i)
             if i >= len(COUNTDOWN_OVERLAY_IMAGES):
                 break;
             #read overlay image
             im = Image.open(COUNTDOWN_OVERLAY_IMAGES[i])
             #resize to 20% of height
-            im.thumbnail((preview_width,overlay_height))
+            im.thumbnail((preview_width, overlay_height))
 
             #overlays should be padded to 32 (width) and 16 (height)
             pad_width = int((preview_width + 31) / 32) * 32
@@ -750,158 +781,51 @@ class UserInterface():
             # Paste the original image into the padded one (centered)
             padded_overlay.paste(im, ( int((preview_width-im.size[0])/2.0), int((preview_height-im.size[1])/2.0)))
             overlay_images.append(padded_overlay)
-        ## All images loaded at the right resolution
 
         #Change overlay every second and blink led
         for i in range(countdown):
-            #what overlay image to select:
+            self.log.debug(i)
+
+            overlay = None
             overlay_image = None
             overlay_image_num = countdown -1 -i #5-1-0 ==> 4 ; 5-1-4 ==> 0
+
+            # get the appropriate image
             if overlay_image_num >= len(overlay_images):
-                overlay_image = overlay_images[len(overlay_images)-1]
+                self.log.debug('timer is bigger than amount of overlay images, using last image');
+                last_img = len(overlay_images) - 1
+                overlay_image = overlay_images[last_img]
             elif overlay_image_num < 0:
+                self.log.debug('overlay image is less than zero');
                 overlay_image = None
             else:
+                self.log.debug('overlay image:' + str(overlay_image_num));
                 overlay_image = overlay_images[overlay_image_num]
+            
             ## Add overlay to image
-            overlay = None
             if overlay_image != None:
-                #create overlay
-                overlay = self.camera.add_overlay(overlay_image.tobytes(), size=overlay_image.size)
-                #move it on top of preview
+                self.log.debug('we have an image!')
+                overlay = self.camera.add_overlay(overlay_image.tobytes(), size = overlay_image.size)
                 overlay.layer = 3
-                #change transparency
                 overlay.alpha = 128
-                #flip it horizontally (because preview is flipped)
-                #overlay.hflip = True
-
-            if i < countdown - 2:
-            # slow blink until -2s
-                time.sleep(1)
-                led_state = not led_state
-                self.__countdown_set_led(led_state)
             else:
-            # fast blink until the end
-                for j in range(5):
-                    time.sleep(.2)
-                    led_state = not led_state
-                    self.__countdown_set_led(led_state)
+                self.log.debug('no image');
+
+
+            # if i < countdown - 2:
+            #     time.sleep(1)
+            #     led_state = not led_state
+            #     self.__countdown_set_led(led_state)
+            # else:
+            # # fast blink until the end
+            #     for j in range(5):
+            #         time.sleep(.2)
+            #         led_state = not led_state
+            #         self.__countdown_set_led(led_state)
             if overlay != None:
+                self.log.debug('removing overlay')
                 self.camera.remove_overlay(overlay)
-
-
-
-    def refresh_auth(self):
-        """ refresh the oauth2 service (regularly called)"""
-        # useless if we don't need image upload
-        if not (self.upload_images or self.send_emails):
-            if self.send_emails:
-                self.signed_in = True #Will fail otherwise
-                self.mail_btn.configure(state=NORMAL)
-            return
-        # actual refresh
-        if self.oauth2service.refresh():
-            if self.send_emails:
-                self.mail_btn.configure(state=NORMAL)
-            self.signed_in = True
-        else:
-            if self.send_emails:
-                self.mail_btn.configure(state=DISABLED)
-            self.signed_in = False
-            self.log.error('refresh_auth: refresh failed')
-
-        #relaunch periodically
-        self.auth_after_id = self.root.after(OAUTH2_REFRESH_PERIOD, self.refresh_auth)
-
-
-    def googleUpload(self,filen, title='Photobooth photo', caption = None):
-        """Upload a picture to Google Photos
-
-        Arguments:
-            filen (str) : path to the picture to upload
-            title       : title of the picture
-            caption     : optional caption for the picture
-        """
-        if not self.upload_images:
-            return
-        #upload to picasa album
-        if caption is None:
-            caption = config.photoCaption
-        if config.albumID == 'None':
-            config.albumID = None
-
-        self.oauth2service.upload_picture(filen, config.albumID, title, caption)
-
-
-    def send_email(self):
-        """Ask for an email address and send the last picture to it
-
-        This will popup a touch keyboard
-        """
-        if not self.send_emails:
-            return
-        if self.signed_in and self.tkkb is None:
-            self.email_addr.set("")
-            self.suspend_poll = True
-            self.longpress_obj.suspend()
-            self.tkkb = Toplevel(self.root)
-            keyboard_parent = self.tkkb
-            consent_var = IntVar()
-            if self.config.enable_email_logging:
-                #build consent control
-                main_frame=Frame(self.tkkb)
-                consent_frame = Frame(self.tkkb, bg='white', pady=20)
-                consent_var.set(1)
-                consent_cb = Checkbutton(consent_frame,text="Ok to log my mail address", variable=consent_var, font="Helvetica",bg='white', fg='black')
-                consent_cb.pack(fill=X)
-                consent_frame.pack(side=BOTTOM,fill=X)
-                main_frame.pack(side=TOP,fill=Y)
-                keyboard_parent=main_frame
-                def onEnter(*args):
-                    self.kill_tkkb()
-                    res = self.__send_picture()
-                    if not res:
-                        self.status("Error sending email")
-                        self.log.error("Error sending email")
-                    self.__log_email_address(self.email_addr.get(),consent_var.get()!=0, res, self.last_picture_filename)
-                TouchKeyboard(keyboard_parent,self.email_addr, onEnter = onEnter)
-                self.tkkb.wm_attributes("-topmost", 1)
-                self.tkkb.transient(self.root)
-                self.tkkb.protocol("WM_DELETE_WINDOW", self.kill_tkkb)
-
-            else:
-                def onEnter(*args):
-                    self.kill_tkkb()
-                    self.__send_picture()
-
-                TouchKeyboard(keyboard_parent,self.email_addr, onEnter = onEnter)
-                self.tkkb.wm_attributes("-topmost", 1)
-                self.tkkb.transient(self.root)
-                self.tkkb.protocol("WM_DELETE_WINDOW", self.kill_tkkb)
-
-
-    def send_print(self):
-        self.log.debug("send_print: Printing image")
-        try:
-            conn = cups.Connection()
-            printers = conn.getPrinters()
-            default_printer = printers.keys()[self.selected_printer]#defaults to the first printer installed
-            cups.setUser(getpass.getuser())
-            conn.printFile(default_printer, self.last_picture_filename, self.last_picture_title, {'fit-to-page':'True'})
-            self.log.info('send_print: Sending to printer...')
-        except:
-            self.log.exception('print failed')
-            self.status("Print failed :(")
-        self.log.info("send_print: Image printed")
-
-
-    def kill_tkkb(self):
-        """Kill the popup keyboard"""
-        if self.tkkb is not None:
-            self.tkkb.destroy()
-            self.tkkb = None
-            self.suspend_poll = False
-        self.root.after(300,self.longpress_obj.activate)
+            led_state = False
 
     def __send_picture(self):
         """Actual code to send picture self.last_picture_filename by email to the address entered in self.email_addr StringVar"""
@@ -970,7 +894,7 @@ class UserInterface():
         if self.full_screen:
             top.attributes("-fullscreen",True)
         top.geometry('%dx%d+0+0'%(self.size[0],self.size[1]))
-        top.configure(background='black')
+        top.configure(background = BG_COLOR)
         
         #layout
         NCOLS=4
@@ -996,10 +920,10 @@ class UserInterface():
                 button_img.thumbnail((button_size,button_size))
                 button_img_tk =  ImageTk.PhotoImage(button_img)
                 button_images.append(button_img_tk)
-                button = Button(top, image = button_img_tk, text=effect, height=button_size, width=button_size, background = 'black',command=cb_factory(effect))
+                button = Button(top, image = button_img_tk, text=effect, height = button_size, width = button_size, background = BG_COLOR, command = cb_factory(effect))
             except:
                 self.log.error("Error for effect " + str(effect)+" trying text button")
-                button = Button(top, text=effect, background = "#333333",fg="white",font='Helvetica',command=cb_factory(effect))
+                button = Button(top, text = effect, background = "#333333",fg = "white",font = 'Helvetica', command = cb_factory(effect))
             row = int(index/NCOLS)
             col = index % NCOLS
             button.grid(row=row+1,column=col+1) #+1 -> leave one empty row and one empty column for centering
@@ -1032,10 +956,10 @@ if __name__ == '__main__':
     if args.log_level is None:
         args.log_level = "INFO"
         
-    
     #print args
     import configuration
-    config = configuration.Configuration("configuration.json")
+    config_file = os.path.join("..", "configuration.json")
+    config = configuration.Configuration(config_file)
     if not config.is_valid:
         log.critical("No configuration file found, please run setup.sh script to create one")
         sys.exit()
@@ -1053,8 +977,8 @@ if __name__ == '__main__':
         log.warning("* Command line argument '--disable-hardware-buttons' takes precedence over configuration")
         config.enable_hardware_buttons = False
 
-    if args.disable_full_screen and config.full_screen:
-        log.warning("* Command line argument '--disable-full-screen' takes precedence over configuration")
+    # if args.disable_full_screen and config.full_screen:
+        # log.warning("* Command line argument '--disable-full-screen' takes precedence over configuration")
         config.full_screen = False
 
     ch = logging.StreamHandler()
@@ -1063,6 +987,6 @@ if __name__ == '__main__':
     logging.getLogger("").addHandler(ch)
 
     #TODO move every arguments into config file
-    ui = UserInterface(config,window_size=(SCREEN_W, SCREEN_H),log_level = logging.DEBUG)
+    ui = UserInterface(config, window_size=(SCREEN_W, SCREEN_H), log_level = logging.DEBUG)
 
     ui.start_ui()
