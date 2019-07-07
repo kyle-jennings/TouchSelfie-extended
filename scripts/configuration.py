@@ -6,7 +6,6 @@ class Configuration():
     """Configuration class acts as configuration keys/values holder"""
     # default values
     user_name = None
-    logo_file = None
     countdown1  = 5 # seconds of preview before first snap
     countdown2  = 3 # seconds of preview between snaps (Four pictures mode)
     photoCaption = "" # Caption in the photo album
@@ -74,7 +73,6 @@ class Configuration():
         if "google_photo_album_name" in config.keys(): self.album_name = config["google_photo_album_name"]
         if "local_archive" in config.keys(): self.ARCHIVE = config["local_archive"]
         if "local_archive_dir" in config.keys(): self.archive_dir = config["local_archive_dir"]
-        if "logo_file" in config.keys(): self.logo_file = config["logo_file"]
         if "selected_printer" in config.keys(): self.selected_printer = config["selected_printer"]
         if "snap_caption" in config.keys(): self.photoCaption = config["snap_caption"]
 
@@ -101,7 +99,6 @@ class Configuration():
             "google_photo_album_name" : self.album_name,
             "local_archive": self.ARCHIVE,
             "local_archive_dir" : self.archive_dir,
-            "logo_file": self.logo_file,
             "selected_printer": self.selected_printer,
             "snap_caption": self.photoCaption,
         }
