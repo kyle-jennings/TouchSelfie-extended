@@ -379,9 +379,11 @@ class UserInterface():
     def run_periodically(self):
         import datetime
         # self.log.debug(datetime.datetime.now())
-        if self.last_picture_time < datetime.datetime.now() - datetime.timedelta(seconds = 60):
-            if(self.image != None):
-                self.image.unload()
+        # if self.last_picture_time < datetime.datetime.now() - datetime.timedelta(seconds = 60):
+        #     if(self.image != None):
+        #         self.image.unload()
+
+        # self.log.debug(self.image)
 
         if not self.suspend_poll == True:
             btn_state = self.buttons.state()
@@ -435,7 +437,6 @@ class UserInterface():
         snapshot = snapshot.convert('RGB')
         snapshot.save('collage.jpg')
         snap_filename = 'collage.jpg'
-        self.last_picture_mime_type = 'image/jpg'
         
         return snap_filename, picture_taken
 
@@ -452,7 +453,6 @@ class UserInterface():
         snapshot = Image.open(snap_filename)
         snapshot.save(snap_filename)
 
-        self.last_picture_mime_type = 'image/jpg'
         return snap_filename, picture_taken
 
     """ Snap a shot in given mode
@@ -507,6 +507,10 @@ class UserInterface():
             else:
                 snap_filename, picture_taken = self.collage_snap(snap_size)
 
+            self.log.debug('====================================')
+            self.log.debug('snapshot taken here is the filename:' + snap_filename)
+            self.log.debug('====================================')
+
             # cancel image_effect (hotfix: effect was not reset to 'none' after each shot)
             self.selected_image_effect = 'none'
 
@@ -538,27 +542,27 @@ class UserInterface():
         import datetime
         picture_saved    = False
         picture_uploaded = False
-        timestamp        = datetime.datetime.fromtimestamp(time.time()).strftime("%d-%m-%Y %H:%M:%S")
 
-        # self.log.debug('last picture saved filename')
-        self.log.debug(snap_filename)
-        # self.log.debug(self.last_picture_filename)
-        self.last_picture_filename  = snap_filename
-        self.last_picture_time      = datetime.datetime.now()
-        self.last_picture_timestamp = timestamp
-        self.last_picture_title     = timestamp  #TODO add event name
-        
         # 1. Display
         self.log.debug("snap: displaying image")
         self.image.load(snap_filename)
         
+        # self.log.debug('last picture saved filename')
+        self.log.debug(snap_filename)
+        timestamp                   = datetime.datetime.fromtimestamp(time.time()).strftime("%d-%m-%Y %H:%M:%S")
+        self.last_picture_filename  = snap_filename
+        self.last_picture_time      = datetime.datetime.now()
+        self.last_picture_timestamp = timestamp
+        self.last_picture_title     = timestamp  #TODO add event name
+        self.last_picture_mime_type = 'image/jpg'
+
         # 2. Upload
         if self.signed_in:
-            picture_uploaded = self.upload_image_to_google()
+            picture_uploaded = self.upload_image_to_google(snap_filename, timestamp)
         
         # 3. Archive
         if config.ARCHIVE:
-            picture_saved = self.save_locally(mode)
+            picture_saved = self.save_locally(timestamp, snap_filename)
 
         return picture_saved, picture_uploaded
 
@@ -585,111 +589,97 @@ class UserInterface():
         self.auth_after_id = self.root.after(OAUTH2_REFRESH_PERIOD, self.refresh_auth)
 
     """ Uploads the image to google photos """
-    def upload_image_to_google(self):
+    def upload_image_to_google(self, filename, title):
         picture_uploaded = False
         self.set_status("Uploading image")
         self.log.debug("Uploading image")
         try:
-            self.googleUpload(
-                self.last_picture_filename,
-                title = self.last_picture_title,
-                caption = config.photoCaption + " " + self.last_picture_title
-            )
-            picture_uploaded = True
-            self.log.info("Image %s successfully uploaded"%self.last_picture_title)
+            caption = config.photoCaption + " " + title
+            
+            if not self.upload_images:
+                return
+
+            if caption is None:
+                caption = config.photoCaption
+            if config.albumID == 'None':
+                config.albumID = None
+
+            self.oauth2service.upload_picture(filename, config.albumID, title, caption)
+            self.log.info("Image %s successfully uploaded"%title)
             self.set_status("")
+
+            picture_uploaded = True
         except Exception as e:
             self.set_status("Error uploading image :(")
             self.log.exception("snap: Error uploading image")
 
         return picture_uploaded
-    
-    """ Upload a picture to Google Photos
-
-        Arguments:
-            filen (str) : path to the picture to upload
-            title       : title of the picture
-            caption     : optional caption for the picture
-    """
-    def googleUpload(self,filen, title='Photobooth photo', caption = None):
-        if not self.upload_images:
-            return
-        #upload to picasa album
-        if caption is None:
-            caption = config.photoCaption
-        if config.albumID == 'None':
-            config.albumID = None
-
-        self.oauth2service.upload_picture(filen, config.albumID, title, caption)
 
     """ Saves the image to a USB drive if available """
-    def save_to_usb(self):
+    def save_to_usb(self, filename):
         self.log.info("Archiving to USB keys")
         picture_saved = False
         try:
             usb_mount_point_root = "/media/pi/"
             import os
             root, dirs, files = next(os.walk(usb_mount_point_root))
+            
             for directory in dirs:
                 mountpoint = os.path.join(root, directory)
+            
                 if mountpoint.find("SETTINGS") != -1:
                     #don't write into SETTINGS directories
                     continue
+                
                 if os.access(mountpoint, os.W_OK):
                     #can write in this mountpoint
-                    self.log.info("Writing snaphshot to %s"%mountpoint)
+                    self.log.info("Writing snaphshot to %s" % mountpoint)
+            
                     try:
                         dest_dir = os.path.join(mountpoint, "TouchSelfiePhotos")
                         if not os.path.exists(dest_dir):
                             os.makedirs(dest_dir)
                         import shutil
-                        shutil.copy(self.last_picture_filename, os.path.join(dest_dir, new_filename))
+                        shutil.copy(filename, os.path.join(dest_dir, new_filename))
                         picture_saved = True
                     except:
-                        self.log.warning("Could not write %s to %s mountpoint"%(new_filename,mountpoint))
+                        self.log.warning("Could not write %s to %s mountpoint" % (new_filename, mountpoint))
                         self.log.exception("Error")
         except:
-            self.log.warning("Unable to write %s file to usb key"%(new_filename))
+            self.log.warning("Unable to write %s file to usb key" % (new_filename))
         return picture_saved;
 
     """ Saves the image to local storage """
-    def save_locally(self, mode):
+    def save_locally(self, timestamp, filename):
         import os
-        self.log.info("Archiving image %s"%self.last_picture_title)
+        self.log.info("Archiving image %s"%timestamp)
         try:
             if os.path.exists(config.archive_dir):
-                new_filename = ""
-                if mode == 'None':
-                    new_filename = "%s-snap.jpg" % self.last_picture_timestamp
-                elif mode == 'Four':
-                    new_filename = "%s-collage.jpg" % self.last_picture_timestamp
+                new_filename = "%s-photo.jpg" % timestamp
 
                 # Try to write the picture we've just taken to ALL plugged-in usb keys
                 if config.archive_to_all_usb_drives:
-                    self.save_to_usb();
+                    self.save_to_usb(filename);
 
                 #Archive on the setup defined directory
-                self.log.info("Archiving to local directory %s"%config.archive_dir)
+                self.log.info("Archiving to local directory %s" % config.archive_dir)
                 new_filename = os.path.join(config.archive_dir, new_filename)
-                # bug #40 shows that os.rename does not handle cross-filesystems (ex: usb key)
-                # So we use (slower) copy and remove when os.rename raises an exception
+
                 try:
-                    os.rename(self.last_picture_filename, new_filename)
-                    self.log.info("Snap saved to %s"%new_filename)
+                    os.rename(filename, new_filename)
+                    self.log.info("Snap saved to %s" % new_filename)
                     picture_saved = True
                 except:
                     import shutil
-                    shutil.copy(self.last_picture_filename, new_filename)
-                    self.log.info("Snap saved to %s"%new_filename)
+                    shutil.copy(filename, new_filename)
+                    self.log.info("Snap saved to %s" % new_filename)
                     picture_saved = True
-                    os.remove(self.last_picture_filename)
-
-                self.last_picture_filename = new_filename
+                    os.remove(filename)
             else:
-                self.log.error("snap: Error : archive_dir %s doesn't exist"% config.archive_dir)
+                self.log.error("snap: Error : archive_dir %s doesn't exist" % config.archive_dir)
         except Exception as e:
             self.set_status("Saving failed :(")
-            self.log.exception("Image %s couldn't be saved"%self.last_picture_title)
+            self.log.exception("Image %s couldn't be saved" % timestamp)
             picture_saved = False
 
         return picture_saved
@@ -711,24 +701,31 @@ class UserInterface():
             
             if self.config.enable_email_logging:
                 #build consent control
-                main_frame=Frame(self.tkkb)
-                consent_frame = Frame(self.tkkb, bg=FG_COLOR, pady=20)
+                main_frame = Frame(self.tkkb)
+                consent_frame = Frame(self.tkkb, bg = FG_COLOR, pady = 20)
                 consent_var.set(1)
-                consent_cb = Checkbutton(consent_frame,text="Ok to log my mail address", variable=consent_var, font="Helvetica",bg=FG_COLOR, fg='black')
-                consent_cb.pack(fill=X)
-                consent_frame.pack(side=BOTTOM,fill=X)
-                main_frame.pack(side=TOP,fill=Y)
-                keyboard_parent=main_frame
+                consent_cb = Checkbutton(
+                    consent_frame,
+                    text = "Ok to log my mail address",
+                    variable = consent_var,
+                    font = "Helvetica",bg = FG_COLOR,
+                    fg = 'black'
+                )
+                consent_cb.pack(fill = X)
+                consent_frame.pack(side = BOTTOM,fill = X)
+                main_frame.pack(side = TOP,fill = Y)
+                keyboard_parent = main_frame
                 
                 def onEnter(*args):
+                    filename = self.last_picture_filename
                     self.close_keyboard()
                     res = self.__send_picture()
                     if not res:
                         self.set_status("Error sending email")
                         self.log.error("Error sending email")
-                    self.__log_email_address(self.email_addr.get(),consent_var.get()!=0, res, self.last_picture_filename)
+                    self.__log_email_address(self.email_addr.get(), consent_var.get()!=0, res, filename)
                 
-                TouchKeyboard(keyboard_parent,self.email_addr, onEnter = onEnter)
+                TouchKeyboard(keyboard_parent, self.email_addr, onEnter = onEnter)
                 self.tkkb.wm_attributes("-topmost", 1)
                 self.tkkb.transient(self.root)
                 self.tkkb.protocol("WM_DELETE_WINDOW", self.close_keyboard)
@@ -746,12 +743,14 @@ class UserInterface():
     """ Send the photo to the printers """
     def send_print(self):
         self.log.debug("send_print: Printing image")
+        filename = self.last_picture_filename
+        title    = self.last_picture_title
         try:
             conn = cups.Connection()
             printers = conn.getPrinters()
             default_printer = printers.keys()[self.selected_printer]#defaults to the first printer installed
             cups.setUser(getpass.getuser())
-            conn.printFile(default_printer, self.last_picture_filename, self.last_picture_title, {'fit-to-page':'True'})
+            conn.printFile(default_printer, filename, `title, {'fit-to-page':'True'})
             self.log.info('send_print: Sending to printer...')
         except:
             self.log.exception('print failed')
