@@ -1,4 +1,4 @@
-from UserInterface import UserInterface
+from window import window
 import configuration
 import argparse
 import logging
@@ -6,7 +6,7 @@ from constants import *
 
 if __name__ == '__main__':
 
-
+    import configuration
     log = logging.getLogger(__name__)
     logging.getLogger("PIL").setLevel(logging.WARNING)
     logging.basicConfig(
@@ -62,6 +62,6 @@ if __name__ == '__main__':
     logging.getLogger("").addHandler(ch)
 
     #TODO move every arguments into config file
-    ui = UserInterface(config,window_size=(SCREEN_W, SCREEN_H),log_level = logging.DEBUG)
+    window = window(config, window_size=(SCREEN_W, SCREEN_H), log_level = logging.DEBUG)
 
-    ui.start_ui()
+    window.start_ui()

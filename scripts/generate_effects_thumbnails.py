@@ -41,7 +41,7 @@ def snap_effects():
                     effect_string += "-" + str(arg)
             except:
                 effect_string += "-" + str(effect_params)
-        capture_filename = os.path.join(SNAP_PATH,effect_string + '.jpg')
+        capture_filename = os.path.join(SNAP_PATH, effect_string + '.jpg')
         camera.capture(capture_filename)
         effects_snaps[effect] = capture_filename
     #all effects snapped

@@ -20,8 +20,8 @@ except ImportError:
     print "Cups not installed. removing option"
     printer_selection_enable = False
 
-VALID_ICON_FILE = os.path.join("assets","ic_valid.png")
-INVALID_ICON_FILE = os.path.join("assets","ic_invalid.png")
+VALID_ICON_FILE = os.path.join("assets", "valid-icon.png")
+INVALID_ICON_FILE = os.path.join("assets", "invalid-icon.png")
 from PIL import Image as _Image
 from PIL import ImageTk as _ImageTk
 from Tkinter import *

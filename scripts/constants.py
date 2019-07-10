@@ -38,31 +38,19 @@ SCREEN_H = 480 ## raspi touch
 # Parameters for the three main effects
 # None: simple shot
 # Four: Collage of four shots
-v2_full_size = (2592,1944)
-v2_half_size = (1296,972)
-v2_quarter_size = (648,486)
+full_size = (1640,1232)#(2592,1944)
+half_size = (820,616)
 
 EFFECTS_PARAMETERS = {
-    "None": {
-        'snap_size' : v2_full_size, #(width, height) => preferably use integer division of camera resolution
-        'logo_size' : 128,         # height in pixels of the logo (will be thumbnailed to this size)
-        'logo_padding' : 32        # bottom and right padding of the logo (pixels)
+    "single": {
+        'snap_size' : full_size, #(width, height) => preferably use integer division of camera resolution
     },
-    "Four": { 
-        'snap_size' : v2_half_size,                       #(width, height) of each shots of the 2x2 collage
+    "collage": { 
+        'snap_size' : half_size,                       #(width, height) of each shots of the 2x2 collage
         'foreground_image' : os.path.join("assets", "collage_four_square.png") # Overlay image on top of the collage
     },
 }
 
-# Path to icons for the software buttons (no hardware buttons setup)
-SOFTWARE_BUTTONS = {
-    "None": {
-        "icon" : os.path.join("assets", "ic_photo.png")
-    },
-    "Four": {
-        "icon" : os.path.join("assets", "ic_portrait.png")
-    },
-}
 
 # piCamera Builtin effects selection list
 # @see https://picamera.readthedocs.io/en/release-1.13/api_camera.html#picamera.PiCamera.image_effect
@@ -74,6 +62,7 @@ SOFTWARE_BUTTONS = {
 # - "effect_icon": path to the thumbnail that represents this effect (MUST be square)
 # - "effect_params": (opt) parameters for the effect (see image_effect_parameter)
 EFFECTS_THUMB_DIR = os.path.join("assets", "effects")
+
 # ordered list of IMAGE_EFFECTS keys (only these will be displayed)
 IMAGE_EFFECTS_LIST = [
     "none",
@@ -91,64 +80,65 @@ IMAGE_EFFECTS_LIST = [
     "watercolor1",
     "colorpoint1"
 ]
+
 # dict of effects and parameters
 IMAGE_EFFECTS = {
     "none": {
         "effect_name":"none",
-        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "eff_none.png")
+        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "none.png")
     },
     # solarize would require some image analysis in order to set the right parameters
     "solarize": { 
         "effect_name":"solarize",
-        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "eff_solarize.png")
+        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "solarize.png")
     },
     "oilpaint": {
         "effect_name":"oilpaint",
-        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "eff_oilpaint.png")
+        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "oilpaint.png")
     },
     "cartoon": {
         "effect_name":"cartoon",
-        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "eff_cartoon.png")
+        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "cartoon.png")
     },
     "colorswap0": {
         "effect_name":"colorswap",
-        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "eff_colorswap.png"),
+        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "colorswap.png"),
         "effect_params" : 0 # green faces
     },
     "colorswap1": {
         "effect_name":"colorswap",
-        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "eff_colorswap1.png"),
+        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "colorswap1.png"),
         "effect_params" : 1  # purple faces
     },
     "negative": {
         "effect_name":"negative",
-        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "eff_negative.png")
+        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "negative.png")
     },
     "pastel": {
         "effect_name":"pastel",
-        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "eff_pastel.png")
+        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "pastel.png")
     },
     "posterise": {
         "effect_name":"posterise",
-        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "eff_posterise.png"),
+        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "posterise.png"),
         "effect_params" : 8
     },
     "gpen": {
         "effect_name":"gpen",
-        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "eff_gpen.png")
+        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "gpen.png")
     },
     "sketch": {
         "effect_name":"sketch",
-        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "eff_sketch.png")
+        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "sketch.png")
     },
     "watercolor1": {
         "effect_name" : "watercolor",
-        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "eff_watercolor_170_25.png"),
+        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "watercolor_170_25.png"),
         "effect_params" : (170,25) # cyan
     },
     "colorpoint1": {
         "effect_name" : "colorpoint",
-        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "eff_colorpoint1.png"),
+        "effect_icon": os.path.join(EFFECTS_THUMB_DIR, "colorpoint1.png"),
         "effect_params" : 1 # keep red/yellow, desaturate everything else
     }
 }
@@ -167,11 +157,11 @@ HARDWARE_BUTTONS = {
 #shortcut list must be valid tkinter events
 #See : http://effbot.org/tkinterbook/tkinter-events-and-bindings.htm
 ACTIONS_KEYS_MAPPING = {
-    "snap_None": ["s", "S", "<F1>"],
-    "snap_Four": ["f", "F", "<F2>"],
+    "snap_single": ["s", "S", "<F1>"],
+    "snap_collage": ["c", "C", "<F2>"],
     "send_email":["e", "@"],
-    "configure":["<Escape>"],
-    "quit":["q", "Q"],
+    "configure":["q", "Q"],
+    "quit":["<Escape>"],
     #, "send_print":["p", "P"] #Uncomment if you want to a keyboard shortcut for printing
 }
 
@@ -193,9 +183,19 @@ COUNTDOWN_OVERLAY_IMAGES = [
 COUNTDOWN_IMAGE_MAX_HEIGHT_RATIO = 0.2 #[0. - 1.] range
 
 # Path to button icon assets
-EMAIL_BUTTON_IMG   = os.path.join("assets", "ic_email.png")
-PRINT_BUTTON_IMG   = os.path.join("assets", "ic_print.png")
-EFFECTS_BUTTON_IMG = os.path.join("assets", "ic_effects.png")
+EMAIL_BUTTON_IMG   = os.path.join("assets", "email-icon.png")
+PRINT_BUTTON_IMG   = os.path.join("assets", "print-icon-3.png")
+EFFECTS_BUTTON_IMG = os.path.join("assets", "effects-icon.png")
+
+# Path to icons for the software buttons (no hardware buttons setup)
+SOFTWARE_BUTTONS = {
+    "single": {
+        "image" : os.path.join("assets", "single-icon-3.png")
+    },
+    "collage": {
+        "image" : os.path.join("assets", "collage-icon-2.png")
+    },
+}
 
 # Interval in ms between two authentication tokens refreshing
 OAUTH2_REFRESH_PERIOD = 1800000 # interval between two OAuth2 token refresh (ms)

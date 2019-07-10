@@ -80,7 +80,6 @@ class ImageLabel(Label):
             self.root.update()
             self.after(self.delay, self.next_frame)
             
-            
 if __name__ == '__main__':
 
     root = Tk()

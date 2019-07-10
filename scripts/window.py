@@ -51,17 +51,9 @@ except ImportError:
         from fakehardware import Color
 
 
-class UserInterface():
+class window():
     
-    """
-    Constructor for the UserInterface object
-
-    Arguments:
-        config (configuration.Configuration()) : the configuration object
-        window_size  tupple(w,h) : the window size (defaults to size in constants.py)
-        poll_period : polling period for hardware buttons changes (ms)
-        log_level : amount of log (see python module 'logging')
-    """
+    """ A User Interface for the photobooth """
     def __init__(self, config, window_size = None, poll_period = HARDWARE_POLL_PERIOD, log_level = logging.INFO):
 
         """
@@ -141,7 +133,6 @@ class UserInterface():
             return safe_execute
 
         def create_on_screen_buttons():
-            import datetime
             self.log.warning("No hardware buttons found, generating on screen buttons")
             self.software_buttons_images = {}
 
@@ -206,21 +197,21 @@ class UserInterface():
             # image_button_factory(padding)
             self.log.debug('boom')
 
-        def make_button(image, callback):
-            return Button(
-                self.root,
-                image = image,
-                height = h,
-                width = w,
-                activebackground = BG_COLOR,
-                activeforeground = BG_COLOR,
-                background = BG_COLOR,
-                borderwidth = 0,
-                highlightbackground = BG_COLOR,
-                highlightcolor = BG_COLOR,
-                highlightthickness = 0,
-                command = callback
-            )
+        """
+        Constructor for the UserInterface object
+
+        Arguments:
+            config (configuration.Configuration()) : the configuration object
+            window_size  tupple(w,h) : the window size (defaults to size in constants.py)
+            poll_period : polling period for hardware buttons changes (ms)
+            log_level : amount of log (see python module 'logging')
+        """
+        upload_images      = config.enable_upload
+        send_emails        = config.enable_email
+        hardware_buttons   = config.enable_hardware_buttons
+        send_prints        = config.enable_print
+        image_effects      = config.enable_effects
+        selected_printer   = config.selected_printer
 
         self.root                    = Tk()
         self.log                     = logging.getLogger("UserInterface")
@@ -228,17 +219,15 @@ class UserInterface():
         self.cursor_motion           = False
         self.full_screen             = config.full_screen
         self.selected_image_effect   = 'none'
-        self.send_prints             = config.enable_print
-        self.send_emails             = config.enable_email
-        self.image_effects           = config.enable_effects
-        self.hardware_buttons        = config.enable_hardware_buttons
+        self.send_prints             = send_prints
+        self.send_emails             = send_emails
+        self.image_effects           = image_effects
         self.quit                    = quit        
         self.enable_cursor_after_id  = self.root.after(100, enable_cursor)
         self.disable_cursor_after_id = self.root.after(2000, check_and_disable_cursor)
         
         self.log.setLevel(self.log_level)
         self.root.bind("<Motion>", on_motion)
-        self.root.title('Kat and Kyle 2019')
 
         install_key_binding("snap_single", safe_execute_factory(lambda *args: self.snap("single")))
         install_key_binding("snap_collage", safe_execute_factory(lambda *args: self.snap("collage")))
@@ -248,12 +237,12 @@ class UserInterface():
         install_key_binding("quit", safe_execute_factory(lambda *args: self.quit()))
      
         ## Bind keyboard keys to actions
-        if self.full_screen:
+        if config.full_screen:
+            self.root.attributes("-fullscreen", True)
+            self.root.update()
             global SCREEN_H, SCREEN_W
             SCREEN_W = self.root.winfo_width()
             SCREEN_H = self.root.winfo_height()
-            self.root.attributes("-fullscreen", True)
-            self.root.update()
             self.size = (SCREEN_W, SCREEN_H)
             window_size = self.size
 
@@ -270,33 +259,71 @@ class UserInterface():
         self.image.place(x = 0, y = 0, relwidth = 1, relheight = 1)
         self.image.configure(background = BG_COLOR)
 
-        # Create sendprint button
+        #Create sendprint button
         if self.send_prints:
             print_image = Image.open(PRINT_BUTTON_IMG)
-            w,h = print_image.size
+            w, h = print_image.size
             self.print_imagetk = ImageTk.PhotoImage(print_image)
-            self.print_btn = make_button(self.print_imagetk, self.send_print)
-            self.print_btn.place( x=2, y=0)
-            self.print_btn.configure(background = BG_COLOR)
+            self.print_btn = Button(
+                self.root,
+                image = self.print_imagetk,
+                height = h,
+                width = w,
+                activebackground = BG_COLOR,
+                activeforeground = BG_COLOR,
+                background = BG_COLOR,
+                borderwidth = 0,
+                highlightbackground = BG_COLOR,
+                highlightcolor = BG_COLOR,
+                highlightthickness = 0,
+                command= self.send_print
+            )
+            self.print_btn.place(x=2, y=0)
+            self.print_btn.configure(background= BG_COLOR)
 
-        # Create sendmail Button
-        # if self.send_emails:
-        #     mail_image = Image.open(EMAIL_BUTTON_IMG)
-        #     w,h = mail_image.size
-        #     self.mail_imagetk = ImageTk.PhotoImage(mail_image)
-        #     self.mail_btn = make_button(self.mail_imagetk, self.send_email)
-        #     self.mail_btn.place(x=SCREEN_W-w-2, y=0)
-        #     self.mail_btn.configure(background = BG_COLOR)
+        #Create sendmail Button
+        if self.send_emails:
+            mail_image = Image.open(EMAIL_BUTTON_IMG)
+            w,h = mail_image.size
+            self.mail_imagetk = ImageTk.PhotoImage(mail_image)
+            self.mail_btn  = Button(
+                self.root,
+                image = self.mail_imagetk,
+                height = h,
+                width = w,
+                activebackground = BG_COLOR,
+                activeforeground = BG_COLOR,
+                background = BG_COLOR,
+                borderwidth = 0,
+                highlightbackground = BG_COLOR,
+                highlightcolor = BG_COLOR,
+                highlightthickness = 0,
+                command=self.send_email
+            )
+            self.mail_btn.place(x=SCREEN_W-w-2, y=0)
+            self.mail_btn.configure(background = BG_COLOR)
             
-        # Create image_effects button
-        # We dont want this right now.
-        # if self.image_effects:
-        #     effects_image = Image.open(EFFECTS_BUTTON_IMG)
-        #     w,h = effects_image.size
-        #     self.effects_imagetk = ImageTk.PhotoImage(effects_image)
-        #     self.mail_btn = make_button(self.effects_imagetk, self.__choose_effect)
-        #     self.effects_btn.place(x = SCREEN_W-w-2,y = int((SCREEN_H-h)/2))
-        #     self.effects_btn.configure(background = BG_COLOR)
+        #Create image_effects button
+        if self.image_effects:
+            effects_image = Image.open(EFFECTS_BUTTON_IMG)
+            w,h = effects_image.size
+            self.effects_imagetk = ImageTk.PhotoImage(effects_image)
+            self.effects_btn = Button(
+                self.root,
+                image = self.effects_imagetk,
+                height = h,
+                width = w,
+                activebackground = BG_COLOR,
+                activeforeground = BG_COLOR,
+                background = BG_COLOR,
+                borderwidth = 0,
+                highlightbackground = BG_COLOR,
+                highlightcolor = BG_COLOR,
+                highlightthickness = 0,
+                command=self.__choose_effect
+            )
+            self.effects_btn.place(x = SCREEN_W-w-2,y = int((SCREEN_H-h)/2))
+            self.effects_btn.configure(background = BG_COLOR)
             
         #Create status line
         self.status_lbl = Label(self.root, text="", font=("Helvetica", 20))
@@ -309,10 +336,8 @@ class UserInterface():
         self.poll_period = poll_period
         self.poll_after_id = None
 
-        # the last picture taken
-        import datetime
         self.last_picture_filename = None
-        self.last_picture_time = datetime.datetime.now()
+        self.last_picture_time = time.time()
         self.last_picture_mime_type = None
 
         self.tkkb = None
@@ -320,24 +345,25 @@ class UserInterface():
 
         self.suspend_poll = False
 
-        self.config           = config
-        self.upload_images    = config.enable_upload
-        self.account_email    = config.user_name
-        self.send_emails      = config.enable_email
-        self.selected_printer = config.selected_printer
-        
-        # Google credentials
+        self.upload_images = config.enable_upload
+        self.account_email = config.user_name
+        self.send_emails = send_emails
+        self.send_prints = send_prints
+        self.selected_printer = selected_printer
+        self.config = config
+        #Google credentials
+
         self.configdir = os.path.expanduser('./')
         self.oauth2service = oauth2services.OAuthServices(
             os.path.join(self.configdir, APP_ID_FILE),
             os.path.join(self.configdir, CREDENTIALS_STORE_FILE),
             self.account_email,
-            enable_email = self.send_emails,
-            enable_upload = self.upload_images,
+            enable_email = send_emails,
+            enable_upload = upload_images,
             log_level = self.log_level)
 
         # Hardware buttons - these would be used to start various picture modes
-        if self.hardware_buttons:
+        if hardware_buttons:
             self.buttons = HWB.Buttons( buttons_pins = HARDWARE_BUTTONS['button_pins'], mode = HARDWARE_BUTTONS["pull_up_down"], active_state = HARDWARE_BUTTONS["active_state"])
         else:
             self.buttons = HWB.Buttons( buttons_pins = [], mode="pull_down", active_state=0)
@@ -346,7 +372,7 @@ class UserInterface():
         if not self.buttons.has_buttons():
             create_on_screen_buttons()
 
-        # Camera
+        #Camera
         self.camera = mycamera.PiCamera()
         self.camera.annotate_text_size = 160 # Maximum size
         self.camera.annotate_foreground = Color(FG_COLOR)
@@ -365,7 +391,7 @@ class UserInterface():
             pass
 
     """ Update the application status line with status_text """
-    def set_status(self, status_text):
+    def status(self, status_text):
         self.status_lbl['text'] = status_text
         self.root.update()
 
@@ -377,19 +403,13 @@ class UserInterface():
 
     """ Hardware poll function launched by start_ui """
     def run_periodically(self):
-        import datetime
-        # self.log.debug(datetime.datetime.now())
-        if self.last_picture_time < datetime.datetime.now() - datetime.timedelta(seconds = 60):
-            if(self.image != None):
-                self.image.unload()
-
         if not self.suspend_poll == True:
+
             btn_state = self.buttons.state()
             if btn_state == 1:
                 self.snap("single")
             elif btn_state == 2:
                 self.snap("collage")
-
         self.poll_after_id = self.root.after(self.poll_period, self.run_periodically)
 
     """ Take 4 photos and arrange into a collage """
@@ -403,13 +423,18 @@ class UserInterface():
         w_ = w * 2
         h_ = h * 2
         # take 4 photos and merge into one image.
-        for i in range(1, 5):
-            self.__show_countdown(TIMER, font_size = 80)
-            self.camera.capture('collage_' + str(i) + '.jpg')
+        self.__show_countdown(TIMER, font_size = 80)
+        self.camera.capture('collage_1.jpg')
+        self.__show_countdown(TIMER, font_size = 80)
+        self.camera.capture('collage_2.jpg')
+        self.__show_countdown(TIMER, font_size = 80)
+        self.camera.capture('collage_3.jpg')
+        self.__show_countdown(TIMER, font_size = 80)
+        self.camera.capture('collage_4.jpg')
        
         # Assemble collage
         self.camera.stop_preview()
-        self.set_status("Assembling collage")
+        self.status("Assembling collage")
         self.log.debug("snap: assembling collage")
         snapshot = Image.new('RGBA', (w_, h_))
         snapshot.paste(Image.open('collage_1.jpg'), (  0,   0,  w, h))
@@ -418,7 +443,7 @@ class UserInterface():
         snapshot.paste(Image.open('collage_4.jpg'), (w, h, w_, h_))
         picture_taken = True
         
-        #paste the collage frame if it exists
+        #paste the collage enveloppe if it exists
         try:
             self.log.debug("snap: Adding the collage cover")
             front = Image.open(EFFECTS_PARAMETERS['collage']['foreground_image'])
@@ -430,7 +455,7 @@ class UserInterface():
         except Exception, e:
             self.log.error("snap: unable to paste collage cover: %s"%repr(e))
 
-        self.set_status("")
+        self.status("")
         self.log.debug("snap: Saving collage")
         snapshot = snapshot.convert('RGB')
         snapshot.save('collage.jpg')
@@ -470,7 +495,7 @@ class UserInterface():
         import os
         self.log.info("Snaping photo (mode=%s)" % mode)
         self.suspend_poll = True
-        self.set_status("")
+        self.status("")
         picture_taken = False
         picture_saved = False
         picture_uploaded = False
@@ -489,13 +514,13 @@ class UserInterface():
         snap_size = EFFECTS_PARAMETERS[mode]['snap_size']
         try:
             # 0. Apply builtin effect
-            # if self.image_effects:
-            #     try:
-            #         self.camera.image_effect = IMAGE_EFFECTS[self.selected_image_effect]['effect_name']
-            #         if 'effect_params' in IMAGE_EFFECTS[self.selected_image_effect]:
-            #             self.camera.image_effect_params = IMAGE_EFFECTS[self.selected_image_effect]['effect_params']
-            #     except:
-            #         self.log.error("snap: Error setting effect to %s"%self.selected_image_effect)
+            if self.image_effects:
+                try:
+                    self.camera.image_effect = IMAGE_EFFECTS[self.selected_image_effect]['effect_name']
+                    if 'effect_params' in IMAGE_EFFECTS[self.selected_image_effect]:
+                        self.camera.image_effect_params = IMAGE_EFFECTS[self.selected_image_effect]['effect_params']
+                except:
+                    self.log.error("snap: Error setting effect to %s"%self.selected_image_effect)
             self.camera.resolution = snap_size
             self.camera.start_preview()
             
@@ -512,11 +537,11 @@ class UserInterface():
 
             # Here, the photo is in snap_filename
 
-            if os.path.exists(snap_filename) & os.path.isfile(snap_filename):
+            if os.path.exists(snap_filename):
                 picture_saved, picture_uploaded = self.save_or_upload(snap_filename, mode)   
             else:
                 # error
-                self.set_status("Snap failed :(")
+                self.status("Snap failed :(")
                 self.log.critical("snap: snapshot file doesn't exists: %s"%snap_filename)
                 self.image.unload()
         except Exception, e:
@@ -528,7 +553,7 @@ class UserInterface():
         #check if a picture was taken and not saved
         if picture_taken and not (picture_saved or picture_uploaded):
             self.log.critical("Error! picture was taken but not saved or uploaded")
-            self.set_status("ERROR: Picture was not saved!")
+            self.status("ERROR: Picture was not saved!")
             return None
 
         return snap_filename
@@ -540,11 +565,8 @@ class UserInterface():
         picture_uploaded = False
         timestamp        = datetime.datetime.fromtimestamp(time.time()).strftime("%d-%m-%Y %H:%M:%S")
 
-        # self.log.debug('last picture saved filename')
-        self.log.debug(snap_filename)
-        # self.log.debug(self.last_picture_filename)
         self.last_picture_filename  = snap_filename
-        self.last_picture_time      = datetime.datetime.now()
+        self.last_picture_time      = time.time()
         self.last_picture_timestamp = timestamp
         self.last_picture_title     = timestamp  #TODO add event name
         
@@ -572,12 +594,12 @@ class UserInterface():
             return
         # actual refresh
         if self.oauth2service.refresh():
-            # if self.send_emails:
-            #     self.mail_btn.configure(state=NORMAL)
+            if self.send_emails:
+                self.mail_btn.configure(state=NORMAL)
             self.signed_in = True
         else:
-            # if self.send_emails:
-            #     self.mail_btn.configure(state=DISABLED)
+            if self.send_emails:
+                self.mail_btn.configure(state=DISABLED)
             self.signed_in = False
             self.log.error('refresh_auth: refresh failed')
 
@@ -587,7 +609,7 @@ class UserInterface():
     """ Uploads the image to google photos """
     def upload_image_to_google(self):
         picture_uploaded = False
-        self.set_status("Uploading image")
+        self.status("Uploading image")
         self.log.debug("Uploading image")
         try:
             self.googleUpload(
@@ -597,9 +619,9 @@ class UserInterface():
             )
             picture_uploaded = True
             self.log.info("Image %s successfully uploaded"%self.last_picture_title)
-            self.set_status("")
+            self.status("")
         except Exception as e:
-            self.set_status("Error uploading image :(")
+            self.status("Error uploading image :(")
             self.log.exception("snap: Error uploading image")
 
         return picture_uploaded
@@ -688,7 +710,7 @@ class UserInterface():
             else:
                 self.log.error("snap: Error : archive_dir %s doesn't exist"% config.archive_dir)
         except Exception as e:
-            self.set_status("Saving failed :(")
+            self.status("Saving failed :(")
             self.log.exception("Image %s couldn't be saved"%self.last_picture_title)
             picture_saved = False
 
@@ -700,7 +722,6 @@ class UserInterface():
     def send_email(self):
         if not self.send_emails:
             return
-
         if self.signed_in and self.tkkb is None:
             self.email_addr.set("")
             self.suspend_poll = True
@@ -708,7 +729,6 @@ class UserInterface():
             self.tkkb = Toplevel(self.root)
             keyboard_parent = self.tkkb
             consent_var = IntVar()
-            
             if self.config.enable_email_logging:
                 #build consent control
                 main_frame=Frame(self.tkkb)
@@ -719,15 +739,13 @@ class UserInterface():
                 consent_frame.pack(side=BOTTOM,fill=X)
                 main_frame.pack(side=TOP,fill=Y)
                 keyboard_parent=main_frame
-                
                 def onEnter(*args):
                     self.close_keyboard()
                     res = self.__send_picture()
                     if not res:
-                        self.set_status("Error sending email")
+                        self.status("Error sending email")
                         self.log.error("Error sending email")
                     self.__log_email_address(self.email_addr.get(),consent_var.get()!=0, res, self.last_picture_filename)
-                
                 TouchKeyboard(keyboard_parent,self.email_addr, onEnter = onEnter)
                 self.tkkb.wm_attributes("-topmost", 1)
                 self.tkkb.transient(self.root)
@@ -755,7 +773,7 @@ class UserInterface():
             self.log.info('send_print: Sending to printer...')
         except:
             self.log.exception('print failed')
-            self.set_status("Print failed :(")
+            self.status("Print failed :(")
         self.log.info("send_print: Image printed")
 
     """ Kill the popup keyboard """
@@ -895,32 +913,29 @@ class UserInterface():
 
         return image;
 
-    """ Actual code to email picture self.last_picture_filename
+    """ Actual code to send picture self.last_picture_filename by email to the 
+        address entered in self.email_addr StringVar
     """
     def __send_picture(self):
-        
         if not self.send_emails:
             return False
-        
         retcode = False
         if self.signed_in:
             #print 'sending photo by email to %s' % self.email_addr.get()
-            self.set_status("Sending Email")
             self.log.debug("send_picture: sending picture by email")
-            self.log.debug(self.last_picture_filename)
+            self.status("Sending Email")
             try:
                 retcode = self.oauth2service.send_message(
                     self.email_addr.get().strip(),
                     config.emailSubject,
                     config.emailMsg,
-                    self.last_picture_filename
-                )
+                    self.last_picture_filename)
             except Exception, e:
                 self.log.exception('send_picture: Mail sending Failed')
-                self.set_status("Send failed :(")
+                self.status("Send failed :(")
                 retcode = False
             else:
-                self.set_status("")
+                self.status("")
         else:
             self.log.error('send_picture: Not signed in')
             retcode = False
@@ -1012,57 +1027,3 @@ class UserInterface():
         top.rowconfigure(NROWS + 1, weight = 1)
         
         self.root.wait_window(top)
-        
-if __name__ == '__main__':
-
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-de", "--disable-email", help="disable the 'send photo by email' feature",
-                    action="store_true")
-    parser.add_argument("-du", "--disable-upload", help="disable the 'auto-upload to Google Photo' feature",
-                    action="store_true")
-    parser.add_argument("-df", "--disable-full-screen", help="disable the full-screen mode",
-                    action="store_true")
-    parser.add_argument("-dh", "--disable-hardware-buttons", help="disable the hardware buttons (on-screen buttons instead)",
-                    action="store_true")
-    parser.add_argument("--log-level", type=str, choices=['DEBUG','INFO','WARNING','ERROR','CRITICAL'],
-                    help="Log level (defaults to WARNING)")
-    args = parser.parse_args()
-    
-    if args.log_level is None:
-        args.log_level = "INFO"
-        
-    """ print args """
-    import configuration
-    config_file = os.path.join("..", "configuration.json")
-    config = configuration.Configuration(config_file)
-    if not config.is_valid:
-        log.critical("No configuration file found, please run setup.sh script to create one")
-        sys.exit()
-
-    """ command line arguments have higher precedence than config """
-    if args.disable_upload and config.enable_upload:
-        log.warning("* Command line argument '--disable-upload' takes precedence over configuration")
-        config.enable_upload = False
-
-    if args.disable_email and config.enable_email:
-        log.warning("* Command line argument '--disable-email' takes precedence over configuration")
-        config.enable_email = False
-
-    if args.disable_hardware_buttons and config.enable_hardware_buttons:
-        log.warning("* Command line argument '--disable-hardware-buttons' takes precedence over configuration")
-        config.enable_hardware_buttons = False
-
-    # if args.disable_full_screen and config.full_screen:
-        # log.warning("* Command line argument '--disable-full-screen' takes precedence over configuration")
-        config.full_screen = False
-
-    ch = logging.StreamHandler()
-    ch.setLevel(args.log_level)
-    ch.setFormatter(logging.Formatter(fmt='%(levelname)-8s|%(asctime)s| %(message)s', datefmt="%H:%M:%S"))
-    logging.getLogger("").addHandler(ch)
-
-    """ TODO move every arguments into config file """
-    ui = UserInterface(config, window_size=(SCREEN_W, SCREEN_H), log_level = logging.DEBUG)
-
-    ui.start_ui()
