@@ -180,6 +180,7 @@ COUNTDOWN_OVERLAY_IMAGES = [
     os.path.join("assets", "countdown", "4.png"),
     os.path.join("assets", "countdown", "5.png"),
     os.path.join("assets", "countdown", "ready.png")]
+
 # this defines the height ratio of the countdown images wrt. the preview size
 COUNTDOWN_IMAGE_MAX_HEIGHT_RATIO = 0.2 #[0. - 1.] range
 

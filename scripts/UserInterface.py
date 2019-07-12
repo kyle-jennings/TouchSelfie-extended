@@ -35,8 +35,7 @@ try:
     import hardware_buttons as HWB
 except ImportError:
     log.error("Error importing hardware_buttons, using fakehardware instead")
-    print traceback.print_exc()
-    import fakehardware as HWB
+    pass
 
 try:
     import picamera as mycamera
@@ -45,11 +44,8 @@ except ImportError:
     log.warning("picamera not found, trying cv2_camera")
     try:
         import cv2_camera as mycamera
-        from fakehardware import Color
     except ImportError:
-        log.warning("cv2_camera import failed : using fake hardware instead")
-        import fakehardware as mycamera
-        from fakehardware import Color
+        SystemExit('No camera installed!')
 
 
 class UserInterface():
@@ -185,7 +181,6 @@ class UserInterface():
             total_width = get_button_widths();
             padding = int((self.size[0] - total_width) / (len(SOFTWARE_BUTTONS) - 1))
             button_factory(padding)
-
 
         def make_button(image, callback):
             return Button(
@@ -399,7 +394,12 @@ class UserInterface():
         for i in range(1, 5):
             self.__show_countdown(TIMER, font_size = 80)
             self.camera.capture('collage_' + str(i) + '.jpg')
-       
+            try:
+                os.system("mpg321 " + MP3S['shutter'])
+            except Exception, e:
+                self.log.debug(e);
+                pass
+
         # Assemble collage
         self.camera.stop_preview()
         self.set_status("Assembling collage")
@@ -450,6 +450,7 @@ class UserInterface():
         except Exception, e:
             self.log.debug(e);
             pass
+
         return snap_filename, picture_taken
 
     """ Snap a shot in given mode
@@ -847,6 +848,7 @@ class UserInterface():
             except Exception, e:
                 self.log.debug(e);
                 pass
+
             try:
                 overlay = self.camera.add_overlay(image.tobytes(), size = image.size)
                 overlay.layer = 3
@@ -854,9 +856,9 @@ class UserInterface():
             except Exception, e:
                 self.root.destroy()
 
-
-            if i <= countdown - 1:
-                time.sleep(1)
+            # this timeout is not needed when we used the beeps!
+            # if i <= countdown - 1:
+            #     time.sleep(1)
 
             if overlay != None:
                 self.camera.remove_overlay(overlay)
@@ -923,7 +925,7 @@ class UserInterface():
         return retcode
 
     """ Logs the recipient(?) email address in the sendmail logs """
-    def __log_email_address(self,mail_address,consent_to_log,success,last_picture_filename):
+    def __log_email_address(self, mail_address, consent_to_log, success, last_picture_filename):
         import time
         import datetime
         timestamp = datetime.datetime.fromtimestamp(time.time()).strftime("[%Y-%m-%d %H:%M]")

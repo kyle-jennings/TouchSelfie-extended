@@ -12,7 +12,7 @@ sys.path.append(os.path.join('..','..'))
 from constants import *
 from time import sleep
 from Tkinter import *
-from PIL import Image,ImageTk
+from PIL import Image, ImageTk
 
 def snap_effects():
     """This takes snapshots of all the effects/parameters in constant IMAGE_EFFECTS"""

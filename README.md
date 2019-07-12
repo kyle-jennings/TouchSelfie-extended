@@ -1,34 +1,24 @@
-# News! Now fully compatible with Google Photos API
-
-Original version of TouchSelfie was based on the, now deprecated, PICASA web API.
-The Picasa Web API is discontinued since January 2019.
-This version of TouchSelfie handles the new API with the following conditions:
-
-- You must enable 'Google Photos API' (and 'Gmail' if you want the 'send email' feature) on your [google developers console](https://console.developers.google.com). [See this article](https://github.com/laurentalacoque/TouchSelfie-extended/wiki/CreateGoogleProject) for help configuring your Google project and downloading your credentials file.
-- You must download your app secret file to the following file : `scripts/google_client_id.json`
-- You must relaunch the setup
-
-### Difference with previous Picasa Web API
-
-- This new API is safer and better for your privacy!
-  - TouchSelfie only asks for the minimum amount of permission: it can only **append** photos and albums and only can access to items created by the application. This way, it makes it impossible for TouchSelfie to access informations or photos that you uploaded yourself
-- This means that you can't select any album of your photo library, but your MUST create an album using the `setup.py` script. For this, just use the `Select Album` button and choose the `<Create new>` entry. (If you prefer to upload your photos in your photos library instead of an album as your camera does, just select `<No Album>` instead). Once your album is created, it will be populated with a random color square: don't remove it, otherwise this will delete the album)
-
-
-
 # TouchSelfie
 Open Source Photobooth forked and improved from [wyolum/TouchSelfie](https://github.com/wyolum/TouchSelfie)
 
 For hardware construction, see [Make Magazine article](https://makezine.com/projects/raspberry-pi-photo-booth/)
 
+
 ## Take a shortcut:
+- [News](#news)
 - [Installation](#install)
-- [What's new?](#changes)
+- [changes?](#changes)
 - [A note on confidentiality and security](#confidentiality)
+
+
+## <a id="news"></a>News! 
+
+New icons! Countdown and camera sounds! Printer button only appears after a photo has been taken.
 
 ## <a id="install"></a>Installing (extracted and adapted from [Make Magazine](https://makezine.com/projects/raspberry-pi-photo-booth/))
 
-### Complete Video Howto
+
+### Video tutorial
 
 For a very nice How-To of how to set up your photobooth, don't miss the video below!
 Many thanks to [Caroline Dunn](http://carolinedunn.org/) for her great teaching skills.
@@ -36,33 +26,36 @@ Many thanks to [Caroline Dunn](http://carolinedunn.org/) for her great teaching 
 [![Caroline Dunn's TouchSelfie installation howto](https://img.youtube.com/vi/Gd0RKYRNJmo/0.jpg)](https://www.youtube.com/watch?v=Gd0RKYRNJmo)
 
 
-### First thigns first ###
-#### download this repo ####
+### First thigns first
+#### download this repo
+```
+wget --no-check-certificate --content-disposition https://github.com/kyle-jennings/TouchSelfie-extended/archive/master.zip
+curl -LJO https://github.com/kyle-jennings/TouchSelfie-extended/archive/master.zip | unzip master.zip
+
+unzip master.zip
 ```
 
+### run the install script
+```
+$ cd TouchSelfie-extended
+$ ./install.sh
 ```
 
-### Get the necessary packages
+
+### OR Manually install the necessary packages
 
 ```
 # update system
 sudo apt-get update
 
 # Install ImageTk, Image from PIL
-sudo apt-get install python-pil
-sudo apt-get install python-pil.imagetk
+sudo apt-get install -y python-pil python-pil.imagetk imagemagick cups python-cups
 
 # Install google data api and upgrade it
 sudo apt-get install python-gdata
-sudo pip install --upgrade google-api-python-client
-sudo pip install --upgrade oauth2client
-
-# Install ImageMagick for the 'Animation' mode
-sudo apt-get install imagemagick
-
-# Install CUPS for the Printing function(optional)
-sudo apt-get install cups
-sudo apt-get install python-cups
+sudo pip install --upgrade -q google-api-python-client
+sudo pip install --upgrade -q oauth2client
+sudo pip install --upgrade -q mpg321
 
 # add the pi user the the lpadmin group
 $ sudo usermod -a -G lpadmin pi
@@ -102,9 +95,13 @@ This is only needed if you plan to use the 'send email' or 'upload images to clo
   - hardware dependent things
 
 
-
-
 ## <a id="changes"></a>Changes from [wyolum/TouchSelfie](https://github.com/wyolum/TouchSelfie)
+
+### removed animations
+Will be readded later
+
+### removed camera effects
+
 
 ### Zero password
 - Now integrally based on OAuth2, neither the send-email, nor the upload-pictures will ask for and store a password. You will need to [create a Google project](https://github.com/laurentalacoque/TouchSelfie-extended/wiki/CreateGoogleProject) if you plan to use these features
