@@ -12,6 +12,7 @@ from tkImageLabel import ImageLabel
 from constants import *
 from LongPressDetector import LongPressDetector
 
+
 log = logging.getLogger(__name__)
 logging.getLogger("PIL").setLevel(logging.WARNING)
 logging.basicConfig(
@@ -63,6 +64,8 @@ class UserInterface():
         log_level : amount of log (see python module 'logging')
     """
     def __init__(self, config, window_size = None, poll_period = HARDWARE_POLL_PERIOD, log_level = logging.INFO):
+
+        import datetime
 
         """
         Events to enable/disable cursor based on motion
@@ -124,15 +127,6 @@ class UserInterface():
             self.root.wait_window(top)
         ## End of Auto-hide mouse cursor
 
-        ## Bind keyboard keys to actions
-        def install_key_binding(action, function):
-            if action in ACTIONS_KEYS_MAPPING.keys():
-                for key in ACTIONS_KEYS_MAPPING[action]:
-                    self.log.debug("Installing keybinding '%s' for action '%s'"%(key,action))
-                    self.root.bind(key, function)
-            else:
-                self.log.warning("install_key_binding: no action '%s'"%action)
-
         # Factory to launch actions only when no snap is being processed
         def safe_execute_factory(callback):
             def safe_execute(args):
@@ -187,24 +181,11 @@ class UserInterface():
                     btn.place(x = X_, y = Y)
                     X_ = X_ + w + padding
 
-            def image_button_factory(padding):
-                X_ = 0
-                for i, effect in enumerate(SOFTWARE_BUTTONS):
-                    w, h  = self.software_buttons_images[effect]['size']
-                    Y     = self.size[1] - h
-                    image = self.software_buttons_images[effect]['image']
-                    btn   = Label(self.root, image = image)
-                    btn.pack()
-                    btn.bind('<Button-' + str(i+1) + '>', snap_factory(effect))
-                    btn.place(x = X_, y = Y)
-                    X_ = X_ + w + padding
-
             #we have the total size, compute padding
             total_width = get_button_widths();
             padding = int((self.size[0] - total_width) / (len(SOFTWARE_BUTTONS) - 1))
             button_factory(padding)
-            # image_button_factory(padding)
-            self.log.debug('boom')
+
 
         def make_button(image, callback):
             return Button(
@@ -240,12 +221,12 @@ class UserInterface():
         self.root.bind("<Motion>", on_motion)
         self.root.title('Kat and Kyle 2019')
 
-        install_key_binding("snap_single", safe_execute_factory(lambda *args: self.snap("single")))
-        install_key_binding("snap_collage", safe_execute_factory(lambda *args: self.snap("collage")))
-        install_key_binding("send_email", safe_execute_factory(lambda *args: self.send_email()))
-        install_key_binding("send_print", safe_execute_factory(lambda *args: self.send_print()))
-        install_key_binding("configure", safe_execute_factory(lambda *args: self.long_press_cb(self)))
-        install_key_binding("quit", safe_execute_factory(lambda *args: self.quit()))
+        self.install_key_binding("snap_single", safe_execute_factory(lambda *args: self.snap("single")))
+        self.install_key_binding("snap_collage", safe_execute_factory(lambda *args: self.snap("collage")))
+        self.install_key_binding("send_email", safe_execute_factory(lambda *args: self.send_email()))
+        self.install_key_binding("send_print", safe_execute_factory(lambda *args: self.send_print()))
+        self.install_key_binding("configure", safe_execute_factory(lambda *args: self.long_press_cb(self)))
+        self.install_key_binding("quit", safe_execute_factory(lambda *args: self.quit()))
      
         ## Bind keyboard keys to actions
         if self.full_screen:
@@ -276,7 +257,7 @@ class UserInterface():
             w,h = print_image.size
             self.print_imagetk = ImageTk.PhotoImage(print_image)
             self.print_btn = make_button(self.print_imagetk, self.send_print)
-            self.print_btn.place( x=2, y=0)
+            # self.print_btn.place( x=2, y=0)
             self.print_btn.configure(background = BG_COLOR)
 
         # Create sendmail Button
@@ -284,7 +265,7 @@ class UserInterface():
         #     mail_image = Image.open(EMAIL_BUTTON_IMG)
         #     w,h = mail_image.size
         #     self.mail_imagetk = ImageTk.PhotoImage(mail_image)
-        #     self.mail_btn = make_button(self.mail_imagetk, self.send_email)
+        #     self.mail_btn = self.make_button(self.mail_imagetk, self.send_email)
         #     self.mail_btn.place(x=SCREEN_W-w-2, y=0)
         #     self.mail_btn.configure(background = BG_COLOR)
             
@@ -294,7 +275,7 @@ class UserInterface():
         #     effects_image = Image.open(EFFECTS_BUTTON_IMG)
         #     w,h = effects_image.size
         #     self.effects_imagetk = ImageTk.PhotoImage(effects_image)
-        #     self.mail_btn = make_button(self.effects_imagetk, self.__choose_effect)
+        #     self.mail_btn = self.make_button(self.effects_imagetk, self.__choose_effect)
         #     self.effects_btn.place(x = SCREEN_W-w-2,y = int((SCREEN_H-h)/2))
         #     self.effects_btn.configure(background = BG_COLOR)
             
@@ -310,9 +291,8 @@ class UserInterface():
         self.poll_after_id = None
 
         # the last picture taken
-        import datetime
-        self.last_picture_filename = None
-        self.last_picture_time = datetime.datetime.now()
+        self.last_picture_filename  = None
+        self.last_picture_time      = None
         self.last_picture_mime_type = None
 
         self.tkkb = None
@@ -363,6 +343,15 @@ class UserInterface():
             self.camera.close()
         except:
             pass
+    
+    ## Bind keyboard keys to actions
+    def install_key_binding(self, action, function):
+        if action in ACTIONS_KEYS_MAPPING.keys():
+            for key in ACTIONS_KEYS_MAPPING[action]:
+                self.log.debug("Installing keybinding '%s' for action '%s'"%(key,action))
+                self.root.bind(key, function)
+        else:
+            self.log.warning("install_key_binding: no action '%s'"%action)
 
     """ Update the application status line with status_text """
     def set_status(self, status_text):
@@ -378,10 +367,12 @@ class UserInterface():
     """ Hardware poll function launched by start_ui """
     def run_periodically(self):
         import datetime
-        # self.log.debug(datetime.datetime.now())
-        # if self.last_picture_time < datetime.datetime.now() - datetime.timedelta(seconds = 60):
-        #     if(self.image != None):
-        #         self.image.unload()
+
+        if self.last_picture_time is not None:
+            if self.last_picture_time < datetime.datetime.now() - datetime.timedelta(seconds = 60):
+                self.image.unload()
+                self.last_picture_time = None
+                self.print_btn.place_forget();
 
         # self.log.debug(self.image)
 
@@ -423,7 +414,7 @@ class UserInterface():
         #paste the collage frame if it exists
         try:
             self.log.debug("snap: Adding the collage cover")
-            front = Image.open(EFFECTS_PARAMETERS['collage']['foreground_image'])
+            front = Image.open(MODE_PARAMETERS['collage']['foreground_image'])
             front = front.resize((w_,h_))
             front = front.convert('RGBA')
             snapshot = snapshot.convert('RGBA')
@@ -442,6 +433,7 @@ class UserInterface():
 
     """ Take a single photo """
     def single_snap(self):
+
         self.log.debug("snap: single picture")
         self.__show_countdown(TIMER, font_size = 80)
         snap_filename = 'snapshot.jpg'
@@ -453,6 +445,11 @@ class UserInterface():
         snapshot = Image.open(snap_filename)
         snapshot.save(snap_filename)
 
+        try:
+            os.system("mpg321 " + MP3S['shutter'])
+        except Exception, e:
+            self.log.debug(e);
+            pass
         return snap_filename, picture_taken
 
     """ Snap a shot in given mode
@@ -475,7 +472,7 @@ class UserInterface():
         picture_saved = False
         picture_uploaded = False
 
-        if mode not in EFFECTS_PARAMETERS.keys():
+        if mode not in MODE_PARAMETERS.keys():
             self.log.error("Wrong effectmode %s defaults to 'Single'" % mode)
             mode = "single"
 
@@ -486,22 +483,12 @@ class UserInterface():
         # snap_filename = snap_picture(mode)
         # take a snapshot here
         snap_filename = None
-        snap_size = EFFECTS_PARAMETERS[mode]['snap_size']
+        snap_size = MODE_PARAMETERS[mode]['snap_size']
         try:
-            # 0. Apply builtin effect
-            # if self.image_effects:
-            #     try:
-            #         self.camera.image_effect = IMAGE_EFFECTS[self.selected_image_effect]['effect_name']
-            #         if 'effect_params' in IMAGE_EFFECTS[self.selected_image_effect]:
-            #             self.camera.image_effect_params = IMAGE_EFFECTS[self.selected_image_effect]['effect_params']
-            #     except:
-            #         self.log.error("snap: Error setting effect to %s"%self.selected_image_effect)
+
             self.camera.resolution = snap_size
             self.camera.start_preview()
-            
-            # 1. Start Preview
-            # 2. Show initial countdown
-            # 3. Take snaps and combine them
+
             if mode == "single":
                 snap_filename, picture_taken = self.single_snap()
             else:
@@ -517,6 +504,16 @@ class UserInterface():
             # Here, the photo is in snap_filename
 
             if os.path.exists(snap_filename) & os.path.isfile(snap_filename):
+                if self.send_prints:
+                    self.print_btn.place(x=2, y=0)
+                #     import datetime
+
+                #     timestamp  = datetime.datetime.fromtimestamp(time.time()).strftime("%d-%m-%Y %H:%M:%S")
+                #     print_image = Image.open(PRINT_BUTTON_IMG)
+                #     w,h = print_image.size
+                #     self.print_imagetk = ImageTk.PhotoImage(print_image)
+                #     self.print_btn = self.make_button(self.print_imagetk, self.send_print(snap_filename, timestamp), w, h)
+
                 picture_saved, picture_uploaded = self.save_or_upload(snap_filename, mode)   
             else:
                 # error
@@ -548,11 +545,10 @@ class UserInterface():
         self.image.load(snap_filename)
         
         # self.log.debug('last picture saved filename')
+        timestamp = datetime.datetime.now()
         self.log.debug(snap_filename)
-        timestamp                   = datetime.datetime.fromtimestamp(time.time()).strftime("%d-%m-%Y %H:%M:%S")
         self.last_picture_filename  = snap_filename
-        self.last_picture_time      = datetime.datetime.now()
-        self.last_picture_timestamp = timestamp
+        self.last_picture_time      = timestamp
         self.last_picture_title     = timestamp  #TODO add event name
         self.last_picture_mime_type = 'image/jpg'
 
@@ -742,19 +738,21 @@ class UserInterface():
 
     """ Send the photo to the printers """
     def send_print(self):
-        self.log.debug("send_print: Printing image")
+        self.log.info("send_print: Printing image")
         filename = self.last_picture_filename
         title    = self.last_picture_title
-        try:
-            conn = cups.Connection()
-            printers = conn.getPrinters()
-            default_printer = printers.keys()[self.selected_printer]#defaults to the first printer installed
-            cups.setUser(getpass.getuser())
-            conn.printFile(default_printer, filename, `title, {'fit-to-page':'True'})
-            self.log.info('send_print: Sending to printer...')
-        except:
-            self.log.exception('print failed')
-            self.set_status("Print failed :(")
+        self.log.info(filename)
+        self.log.info(title)
+        # try:
+        #     conn = cups.Connection()
+        #     printers = conn.getPrinters()
+        #     default_printer = printers.keys()[self.selected_printer]#defaults to the first printer installed
+        #     cups.setUser(getpass.getuser())
+        #     conn.printFile(default_printer, filename, title, {'fit-to-page':'True'})
+        #     self.log.info('send_print: Sending to printer...')
+        # except:
+        #     self.log.exception('print failed')
+        #     self.set_status("Print failed :(")
         self.log.info("send_print: Image printed")
 
     """ Kill the popup keyboard """
@@ -830,8 +828,6 @@ class UserInterface():
         overlay_images = []
         for i in range(countdown):
             
-            self.log.debug(i)
-           
             image_num = countdown -1 -i #3-1-0 ==> 2; 3-1-1 ==> 1; 3-1-2 ==> 0
             overlay = None
             image = None
@@ -841,27 +837,28 @@ class UserInterface():
             if i >= countdown:
                 break;
 
-            self.log.debug('using image:' + COUNTDOWN_OVERLAY_IMAGES[image_num]);
             image = self.__build_overlay_image(image_num)
 
             if image == None:
                 continue;
 
-            self.log.debug('we have an image!')
             try:
-                self.log.debug('adding image!')
+                os.system("mpg321 " + MP3S["countdown"])
+            except Exception, e:
+                self.log.debug(e);
+                pass
+            try:
                 overlay = self.camera.add_overlay(image.tobytes(), size = image.size)
                 overlay.layer = 3
                 overlay.alpha = 100
             except Exception, e:
                 self.root.destroy()
 
+
             if i <= countdown - 1:
-                self.log.debug('sleeping for 1 second')
                 time.sleep(1)
 
             if overlay != None:
-                self.log.debug('removing overlay')
                 self.camera.remove_overlay(overlay)
 
             led_state = False

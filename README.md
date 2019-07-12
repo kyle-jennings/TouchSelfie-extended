@@ -36,6 +36,12 @@ Many thanks to [Caroline Dunn](http://carolinedunn.org/) for her great teaching 
 [![Caroline Dunn's TouchSelfie installation howto](https://img.youtube.com/vi/Gd0RKYRNJmo/0.jpg)](https://www.youtube.com/watch?v=Gd0RKYRNJmo)
 
 
+### First thigns first ###
+#### download this repo ####
+```
+
+```
+
 ### Get the necessary packages
 
 ```
@@ -57,6 +63,9 @@ sudo apt-get install imagemagick
 # Install CUPS for the Printing function(optional)
 sudo apt-get install cups
 sudo apt-get install python-cups
+
+# add the pi user the the lpadmin group
+$ sudo usermod -a -G lpadmin pi
 
 # Setting up  CUPS/printer(optional)
 https://www.techradar.com/how-to/computing/how-to-turn-the-raspberry-pi-into-a-wireless-printer-server-1312717

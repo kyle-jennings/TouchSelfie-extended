@@ -41,7 +41,7 @@ SCREEN_H = 480 ## raspi touch
 full_size = (1640,1232)#(2592,1944)
 half_size = (820,616)
 
-EFFECTS_PARAMETERS = {
+MODE_PARAMETERS = {
     "single": {
         'snap_size' : full_size, #(width, height) => preferably use integer division of camera resolution
     },
@@ -51,7 +51,7 @@ EFFECTS_PARAMETERS = {
     },
 }
 
-
+ICON_DIR = os.path.join("assets", "icons");
 # piCamera Builtin effects selection list
 # @see https://picamera.readthedocs.io/en/release-1.13/api_camera.html#picamera.PiCamera.image_effect
 # this constant maps a subset of picamera builtin effects 
@@ -78,7 +78,7 @@ IMAGE_EFFECTS_LIST = [
     "cartoon",
     "posterise",
     "watercolor1",
-    "colorpoint1"
+    "colorpoint1",
 ]
 
 # dict of effects and parameters
@@ -160,6 +160,7 @@ ACTIONS_KEYS_MAPPING = {
     "snap_single": ["s", "S", "<F1>"],
     "snap_collage": ["c", "C", "<F2>"],
     "send_email":["e", "@"],
+    "send_email":["p", "P"],
     "configure":["q", "Q"],
     "quit":["<Escape>"],
     #, "send_print":["p", "P"] #Uncomment if you want to a keyboard shortcut for printing
@@ -183,18 +184,24 @@ COUNTDOWN_OVERLAY_IMAGES = [
 COUNTDOWN_IMAGE_MAX_HEIGHT_RATIO = 0.2 #[0. - 1.] range
 
 # Path to button icon assets
-EMAIL_BUTTON_IMG   = os.path.join("assets", "email-icon.png")
-PRINT_BUTTON_IMG   = os.path.join("assets", "print-icon-3.png")
-EFFECTS_BUTTON_IMG = os.path.join("assets", "effects-icon.png")
+EMAIL_BUTTON_IMG   = os.path.join(ICON_DIR, "email-icon.png")
+PRINT_BUTTON_IMG   = os.path.join(ICON_DIR, "print-icon-3.png")
+EFFECTS_BUTTON_IMG = os.path.join(ICON_DIR, "effects-icon.png")
 
 # Path to icons for the software buttons (no hardware buttons setup)
 SOFTWARE_BUTTONS = {
     "single": {
-        "image" : os.path.join("assets", "single-icon-3.png")
+        "image" : os.path.join(ICON_DIR, "single-icon-3.png")
     },
     "collage": {
-        "image" : os.path.join("assets", "collage-icon-2.png")
+        "image" : os.path.join(ICON_DIR, "collage-icon-2.png")
     },
+}
+
+# audio clips
+MP3S = {
+    "shutter":   os.path.join("assets", "noises", "shutter-click-3.mp3"),
+    "countdown": os.path.join("assets", "noises", "beep2.mp3")
 }
 
 # Interval in ms between two authentication tokens refreshing
