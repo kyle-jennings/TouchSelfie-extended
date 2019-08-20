@@ -160,7 +160,7 @@ ACTIONS_KEYS_MAPPING = {
     "snap_single": ["s", "S", "<F1>"],
     "snap_collage": ["c", "C", "<F2>"],
     "send_email":["e", "@"],
-    "send_email":["p", "P"],
+    "send_print":["p", "P"],
     "configure":["q", "Q"],
     "quit":["<Escape>"],
     #, "send_print":["p", "P"] #Uncomment if you want to a keyboard shortcut for printing

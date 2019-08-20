@@ -21,7 +21,7 @@ except ImportError:
 
 
 
-class Buttons():
+class HardwareButtons():
     """Hardware Buttons wrapper class"""
     
     def __init__(self, buttons_pins=BUTTONS_PINS, mode=BUTTONS_MODE, active_state=BUTTON_IS_ACTIVE):
@@ -102,7 +102,7 @@ class Buttons():
 if __name__ == '__main__':
     import time
     import sys
-    buttons = Buttons()
+    buttons = HardwareButtons()
     last = 0
     if buttons.has_buttons():
         print "Press hardware buttons to see change, ctrl+C to exit"

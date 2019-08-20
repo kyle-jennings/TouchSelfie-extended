@@ -4,11 +4,11 @@ import time
 import traceback
 import os
 import subprocess
-import oauth2services
+import OAuthServices
 from Tkinter import *
 from PIL import Image, ImageTk
 from mykb import TouchKeyboard
-from tkImageLabel import ImageLabel
+from ImageLabel import ImageLabel
 from constants import *
 from LongPressDetector import LongPressDetector
 
@@ -32,10 +32,11 @@ except ImportError:
     printer_selection_enable = False
 
 try:
-    import hardware_buttons as HWB
+    import HardwareButtons as HWB
 except ImportError:
     log.error("Error importing hardware_buttons, using fakehardware instead")
-    pass
+    import fakehardware as HWB
+    #pass
 
 try:
     import picamera as mycamera
@@ -43,9 +44,12 @@ try:
 except ImportError:
     log.warning("picamera not found, trying cv2_camera")
     try:
-        import cv2_camera as mycamera
+        import Camera as mycamera
+        from fakehardware import Color
     except ImportError:
-        SystemExit('No camera installed!')
+        import fakehardware as mycamera
+        from fakehardware import Color
+        #SystemExit('No camera installed!')
 
 
 class UserInterface():
@@ -303,7 +307,7 @@ class UserInterface():
         
         # Google credentials
         self.configdir = os.path.expanduser('./')
-        self.oauth2service = oauth2services.OAuthServices(
+        self.oauth2service = OAuthServices.OAuthServices(
             os.path.join(self.configdir, APP_ID_FILE),
             os.path.join(self.configdir, CREDENTIALS_STORE_FILE),
             self.account_email,
@@ -313,9 +317,9 @@ class UserInterface():
 
         # Hardware buttons - these would be used to start various picture modes
         if self.hardware_buttons:
-            self.buttons = HWB.Buttons( buttons_pins = HARDWARE_BUTTONS['button_pins'], mode = HARDWARE_BUTTONS["pull_up_down"], active_state = HARDWARE_BUTTONS["active_state"])
+            self.buttons = HWB.HardwareButtons( buttons_pins = HARDWARE_BUTTONS['button_pins'], mode = HARDWARE_BUTTONS["pull_up_down"], active_state = HARDWARE_BUTTONS["active_state"])
         else:
-            self.buttons = HWB.Buttons( buttons_pins = [], mode="pull_down", active_state=0)
+            self.buttons = HWB.HardwareButtons( buttons_pins = [], mode="pull_down", active_state=0)
 
         # creates on screen buttons - these would be used to start various picture modes
         if not self.buttons.has_buttons():
@@ -381,17 +385,17 @@ class UserInterface():
         self.poll_after_id = self.root.after(self.poll_period, self.run_periodically)
 
     """ Take 4 photos and arrange into a collage """
-    def collage_snap(self, snap_size):
+    def collage_snap(self, snap_size, timestamp):
         picture_taken = False
         # collage of four shots
         # compute collage size
-        self.log.debug("snap: starting collage of four")
+        self.log.debug("snap: starting collage of three photos")
         w = snap_size[0]
         h = snap_size[1]
         w_ = w * 2
         h_ = h * 2
         # take 4 photos and merge into one image.
-        for i in range(1, 5):
+        for i in range(1, 4):
             self.__show_countdown(TIMER, font_size = 80)
             self.camera.capture('collage_' + str(i) + '.jpg')
             try:
@@ -405,10 +409,10 @@ class UserInterface():
         self.set_status("Assembling collage")
         self.log.debug("snap: assembling collage")
         snapshot = Image.new('RGBA', (w_, h_))
-        snapshot.paste(Image.open('collage_1.jpg'), (  0,   0,  w, h))
-        snapshot.paste(Image.open('collage_2.jpg'), (w,   0, w_, h))
-        snapshot.paste(Image.open('collage_3.jpg'), (  0, h,  w, h_))
-        snapshot.paste(Image.open('collage_4.jpg'), (w, h, w_, h_))
+        snapshot.paste(Image.open('collage_1.jpg'), (0, 0, w, h))
+        snapshot.paste(Image.open('collage_2.jpg'), (w, 0, w_, h))
+        snapshot.paste(Image.open('collage_3.jpg'), (0, h, w, h_))
+        # snapshot.paste(Image.open('collage_4.jpg'), (w, h, w_, h_))
         picture_taken = True
         
         #paste the collage frame if it exists
@@ -425,25 +429,24 @@ class UserInterface():
 
         self.set_status("")
         self.log.debug("snap: Saving collage")
+        filename = timestamp + '.jpg'
         snapshot = snapshot.convert('RGB')
-        snapshot.save('collage.jpg')
-        snap_filename = 'collage.jpg'
+        snapshot.save(filename)
         
-        return snap_filename, picture_taken
+        return filename, picture_taken
 
     """ Take a single photo """
     def single_snap(self):
 
         self.log.debug("snap: single picture")
         self.__show_countdown(TIMER, font_size = 80)
-        snap_filename = 'snapshot.jpg'
         picture_taken = True        
-        
+        filename = self.last_picture_filename;
         # simple shot with logo
-        self.camera.capture(snap_filename)
+        self.camera.capture(filename)
+        snapshot = Image.open(filename)
+        snapshot.save(filename)
         self.camera.stop_preview()
-        snapshot = Image.open(snap_filename)
-        snapshot.save(snap_filename)
 
         try:
             os.system("mpg321 " + MP3S['shutter'])
@@ -451,7 +454,7 @@ class UserInterface():
             self.log.debug(e);
             pass
 
-        return snap_filename, picture_taken
+        return filename, picture_taken
 
     """ Snap a shot in given mode
 
@@ -466,6 +469,8 @@ class UserInterface():
     """
     def snap(self, mode = "single"):
         import os
+        import datetime
+
         self.log.info("Snaping photo (mode=%s)" % mode)
         self.suspend_poll = True
         self.set_status("")
@@ -490,36 +495,34 @@ class UserInterface():
             self.camera.resolution = snap_size
             self.camera.start_preview()
 
-            if mode == "single":
-                snap_filename, picture_taken = self.single_snap()
-            else:
-                snap_filename, picture_taken = self.collage_snap(snap_size)
+            timestamp = datetime.datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d_%H-%M-%S")
+            self.last_picture_filename  = timestamp + '.jpg'
+            self.last_picture_time      = datetime.datetime.now()
+            self.last_picture_title     = timestamp
+            self.last_picture_mime_type = 'image/jpg'
 
-            self.log.debug('====================================')
-            self.log.debug('snapshot taken here is the filename:' + snap_filename)
-            self.log.debug('====================================')
+            if mode == "single":
+                filename, picture_taken = self.single_snap()
+            else:
+                filename, picture_taken = self.collage_snap(snap_size, timestamp)
+
+            self.log.debug('======================================================')
+            self.log.debug('snapshot taken here is the filename:' + filename)
+            self.log.debug('======================================================')
 
             # cancel image_effect (hotfix: effect was not reset to 'none' after each shot)
             self.selected_image_effect = 'none'
 
-            # Here, the photo is in snap_filename
-
-            if os.path.exists(snap_filename) & os.path.isfile(snap_filename):
+            # Here, the photo is in filename
+            self.log.info(filename)
+            if os.path.exists(filename) & os.path.isfile(filename):
                 if self.send_prints:
-                    self.print_btn.place(x=2, y=0)
-                #     import datetime
-
-                #     timestamp  = datetime.datetime.fromtimestamp(time.time()).strftime("%d-%m-%Y %H:%M:%S")
-                #     print_image = Image.open(PRINT_BUTTON_IMG)
-                #     w,h = print_image.size
-                #     self.print_imagetk = ImageTk.PhotoImage(print_image)
-                #     self.print_btn = self.make_button(self.print_imagetk, self.send_print(snap_filename, timestamp), w, h)
-
-                picture_saved, picture_uploaded = self.save_or_upload(snap_filename, mode)   
+                    self.print_btn.place(x=4, y=0)
+                picture_saved, picture_uploaded = self.save_and_upload(filename, timestamp)   
             else:
                 # error
                 self.set_status("Snap failed :(")
-                self.log.critical("snap: snapshot file doesn't exists: %s"%snap_filename)
+                self.log.critical("snap: snapshot file doesn't exists: %s"%filename)
                 self.image.unload()
         except Exception, e:
             self.log.exception("snap: error during snapshot")
@@ -533,35 +536,187 @@ class UserInterface():
             self.set_status("ERROR: Picture was not saved!")
             return None
 
-        return snap_filename
+        return False
+
+    """ Kill the popup keyboard """
+    def close_keyboard(self):
+        if self.tkkb is not None:
+            self.tkkb.destroy()
+            self.tkkb = None
+            self.suspend_poll = False
+        self.root.after(300,self.longpress_obj.activate)
+
+    """ If you have a hardware led on the camera, link it to this """
+    def __countdown_set_led(self, state):
+        try:
+            self.camera.led = state
+        except:
+            pass
+
+    """ Wrapper function to select between overlay and text countdowns """
+    def __show_countdown(self, countdown, font_size = 160):
+        # self.__show_text_countdown(countdown,font_size=font_size)
+        self.__show_overlay_countdown(countdown)
+
+    """ Display countdown. the camera should have a preview active and the resolution must be set """
+    def __show_text_countdown(self, countdown, font_size = 160):
+        led_state = False
+        self.__countdown_set_led(led_state)
+
+        self.camera.annotate_text = "" # Remove annotation
+        self.camera.annotate_text_size = font_size
+        self.camera.preview.fullscreen = True
+
+        #Change text every second and blink led
+        for i in range(countdown):
+            # Annotation text
+            self.camera.annotate_text = "  " + str(countdown - i) + "  "
+            if i < countdown - 2:
+            # slow blink until -2s
+                time.sleep(1)
+                led_state = not led_state
+                self.__countdown_set_led(led_state)
+            else:
+            # fast blink until the end
+                for j in range(5):
+                    time.sleep(.2)
+                    led_state = not led_state
+                    self.__countdown_set_led(led_state)
+        self.camera.annotate_text = ""
+
+    """ Display countdown as images overlays """
+    def __show_overlay_countdown(self, countdown):
+        # COUNTDOWN_OVERLAY_IMAGES
+        led_state = False
+        self.__countdown_set_led(led_state)
+
+        self.camera.preview.fullscreen = True
+        self.camera.preview.hflip = True  #Mirror effect for easier selfies
+
+        """ uses the countdown timer to reverse find the correct timer number image
+        this could be simplified if we just reorder the countdown images array
+        """
+        overlay_images = []
+        for i in range(countdown):
+            
+            image_num = countdown -1 -i #3-1-0 ==> 2; 3-1-1 ==> 1; 3-1-2 ==> 0
+            overlay = None
+            image = None
+            
+            if i >= len(COUNTDOWN_OVERLAY_IMAGES):
+                break;
+            if i >= countdown:
+                break;
+
+            image = self.__build_overlay_image(image_num)
+
+            if image == None:
+                continue;
+
+            try:
+                overlay = self.camera.add_overlay(image.tobytes(), size = image.size)
+                overlay.layer = 3
+                overlay.alpha = 100
+
+                try:
+                    os.system("mpg321 " + MP3S["countdown"])
+                except Exception, e:
+                    self.log.debug(e);
+                    if i <= countdown - 1:
+                        time.sleep(1)
+                    pass
+
+            except Exception, e:
+                self.root.destroy()
+
+            # this timeout is not needed when we used the beeps!
+
+            if overlay != None:
+                self.camera.remove_overlay(overlay)
+
+            led_state = False
+
+    """ Builds the overlay image for the countdown """
+    def __build_overlay_image(self, i):
+
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+
+        # I'm making the bet that preview window size == screen size in fullscreen mode
+        # If this fails we should try preview_width = min(screen_width, self.camera.resolution[0])
+        preview_width = screen_width
+        preview_height = screen_height
+
+        overlay_height = int(preview_height * COUNTDOWN_IMAGE_MAX_HEIGHT_RATIO)
+        
+        # read overlay image file
+        file = Image.open(COUNTDOWN_OVERLAY_IMAGES[i])
+        # resize to 20% of height
+        file.thumbnail((preview_width, overlay_height))
+
+        # overlays should be padded to 32 (width) and 16 (height)
+        pad_width  = int((preview_width + 31) / 32) * 32
+        pad_height = int((preview_height + 15) / 16) * 16
+
+        image = Image.new('RGBA', (pad_width, pad_height))
+        # Paste the original image into the padded one (centered)
+        image.paste(file, ( int((preview_width - file.size[0]) / 2.0), int((preview_height - file.size[1]) / 2.0)))
+
+        return image;
 
     """ Save or upload the photo - func comment for consistency """
-    def save_or_upload(self, snap_filename, mode):
-        import datetime
+    def save_and_upload(self, filename, timestamp):
+        # import datetime
         picture_saved    = False
         picture_uploaded = False
-
+        self.log.info('saving and uploading')
+        self.log.info(filename)
+        self.log.info(timestamp)
         # 1. Display
         self.log.debug("snap: displaying image")
-        self.image.load(snap_filename)
-        
-        # self.log.debug('last picture saved filename')
-        timestamp = datetime.datetime.now()
-        self.log.debug(snap_filename)
-        self.last_picture_filename  = snap_filename
-        self.last_picture_time      = timestamp
-        self.last_picture_title     = timestamp  #TODO add event name
-        self.last_picture_mime_type = 'image/jpg'
+        self.image.load(filename)
 
         # 2. Upload
         if self.signed_in:
-            picture_uploaded = self.upload_image_to_google(snap_filename, timestamp)
-        
+            picture_uploaded = self.upload_image_to_google(filename, timestamp)
+        else:
+            self.log.info('not signed in')
+
         # 3. Archive
         if config.ARCHIVE:
-            picture_saved = self.save_locally(timestamp, snap_filename)
+            picture_saved = self.save_locally(filename)
 
         return picture_saved, picture_uploaded
+
+    """ Actual code to email picture self.last_picture_filename
+    """
+    def __send_picture(self):
+        
+        if not self.send_emails:
+            return False
+        
+        retcode = False
+        if self.signed_in:
+            self.set_status("Sending Email")
+            self.log.debug("send_picture: sending picture by email")
+            self.log.debug(self.last_picture_filename)
+            try:
+                retcode = self.oauth2service.send_message(
+                    self.email_addr.get().strip(),
+                    config.emailSubject,
+                    config.emailMsg,
+                    self.last_picture_filename
+                )
+            except Exception, e:
+                self.log.exception('send_picture: Mail sending Failed')
+                self.set_status("Send failed :(")
+                retcode = False
+            else:
+                self.set_status("")
+        else:
+            self.log.error('send_picture: Not signed in')
+            retcode = False
+        return retcode
 
     """ Refresh the oauth2 service (regularly called)"""
     def refresh_auth(self):
@@ -647,12 +802,12 @@ class UserInterface():
         return picture_saved;
 
     """ Saves the image to local storage """
-    def save_locally(self, timestamp, filename):
+    def save_locally(self, filename):
         import os
-        self.log.info("Archiving image %s"%timestamp)
+        self.log.info("Archiving image %s" % filename)
         try:
             if os.path.exists(config.archive_dir):
-                new_filename = "%s-photo.jpg" % timestamp
+                # new_filename = "%s-photo.jpg" % filename
 
                 # Try to write the picture we've just taken to ALL plugged-in usb keys
                 if config.archive_to_all_usb_drives:
@@ -660,23 +815,14 @@ class UserInterface():
 
                 #Archive on the setup defined directory
                 self.log.info("Archiving to local directory %s" % config.archive_dir)
-                new_filename = os.path.join(config.archive_dir, new_filename)
-
-                try:
-                    os.rename(filename, new_filename)
-                    self.log.info("Snap saved to %s" % new_filename)
-                    picture_saved = True
-                except:
-                    import shutil
-                    shutil.copy(filename, new_filename)
-                    self.log.info("Snap saved to %s" % new_filename)
-                    picture_saved = True
-                    os.remove(filename)
+                self.last_picture_filename = new_loc = os.path.join(config.archive_dir, filename)
+                picture_saved = True
+                os.rename(filename, new_loc)
             else:
                 self.log.error("snap: Error : archive_dir %s doesn't exist" % config.archive_dir)
         except Exception as e:
             self.set_status("Saving failed :(")
-            self.log.exception("Image %s couldn't be saved" % timestamp)
+            self.log.exception("Image %s couldn't be saved" % filename)
             picture_saved = False
 
         return picture_saved
@@ -744,185 +890,19 @@ class UserInterface():
         title    = self.last_picture_title
         self.log.info(filename)
         self.log.info(title)
-        # try:
-        #     conn = cups.Connection()
-        #     printers = conn.getPrinters()
-        #     default_printer = printers.keys()[self.selected_printer]#defaults to the first printer installed
-        #     cups.setUser(getpass.getuser())
-        #     conn.printFile(default_printer, filename, title, {'fit-to-page':'True'})
-        #     self.log.info('send_print: Sending to printer...')
-        # except:
-        #     self.log.exception('print failed')
-        #     self.set_status("Print failed :(")
-        self.log.info("send_print: Image printed")
-
-    """ Kill the popup keyboard """
-    def close_keyboard(self):
-        if self.tkkb is not None:
-            self.tkkb.destroy()
-            self.tkkb = None
-            self.suspend_poll = False
-        self.root.after(300,self.longpress_obj.activate)
-
-    """ Called whenever we should change the state of oauth2services """
-    def __change_services(self, email, upload):
-        self.oauth2service.enable_email = email
-        self.oauth2service.enable_upload = upload
-        self.send_emails = email
-        self.upload_images = upload
-        #TODO show/hide button = oauth2services.OAuthServices(
-        if email:
-            self.mail_btn.configure(state=NORMAL)
-        else:
-            self.mail_btn.configure(state=DISABLED)
-
-    """ If you have a hardware led on the camera, link it to this """
-    def __countdown_set_led(self, state):
         try:
-            self.camera.led = state
+            conn = cups.Connection()
+            printers = conn.getPrinters()
+            default_printer = printers.keys()[self.selected_printer]#defaults to the first printer installed
+            cups.setUser(getpass.getuser())
+            conn.printFile(default_printer, filename, title, {'fit-to-page':'True'})
+            self.log.info('send_print: Sending to printer...')
         except:
-            pass
+            self.log.exception('print failed')
+            self.log.info('print failed')
+            self.set_status("Print failed :(")
 
-    """ Wrapper function to select between overlay and text countdowns """
-    def __show_countdown(self, countdown, font_size = 160):
-        # self.__show_text_countdown(countdown,font_size=font_size)
-        self.__show_overlay_countdown(countdown)
-
-    """ Display countdown. the camera should have a preview active and the resolution must be set """
-    def __show_text_countdown(self, countdown, font_size = 160):
-        led_state = False
-        self.__countdown_set_led(led_state)
-
-        self.camera.annotate_text = "" # Remove annotation
-        self.camera.annotate_text_size = font_size
-        self.camera.preview.fullscreen = True
-
-        #Change text every second and blink led
-        for i in range(countdown):
-            # Annotation text
-            self.camera.annotate_text = "  " + str(countdown - i) + "  "
-            if i < countdown - 2:
-            # slow blink until -2s
-                time.sleep(1)
-                led_state = not led_state
-                self.__countdown_set_led(led_state)
-            else:
-            # fast blink until the end
-                for j in range(5):
-                    time.sleep(.2)
-                    led_state = not led_state
-                    self.__countdown_set_led(led_state)
-        self.camera.annotate_text = ""
-
-    """ Display countdown as images overlays """
-    def __show_overlay_countdown(self, countdown):
-        # COUNTDOWN_OVERLAY_IMAGES
-        led_state = False
-        self.__countdown_set_led(led_state)
-
-        self.camera.preview.fullscreen = True
-        self.camera.preview.hflip = True  #Mirror effect for easier selfies
-
-        """ uses the countdown timer to reverse find the correct timer number image
-        this could be simplified if we just reorder the countdown images array
-        """
-        overlay_images = []
-        for i in range(countdown):
-            
-            image_num = countdown -1 -i #3-1-0 ==> 2; 3-1-1 ==> 1; 3-1-2 ==> 0
-            overlay = None
-            image = None
-            
-            if i >= len(COUNTDOWN_OVERLAY_IMAGES):
-                break;
-            if i >= countdown:
-                break;
-
-            image = self.__build_overlay_image(image_num)
-
-            if image == None:
-                continue;
-
-            try:
-                os.system("mpg321 " + MP3S["countdown"])
-            except Exception, e:
-                self.log.debug(e);
-                pass
-
-            try:
-                overlay = self.camera.add_overlay(image.tobytes(), size = image.size)
-                overlay.layer = 3
-                overlay.alpha = 100
-            except Exception, e:
-                self.root.destroy()
-
-            # this timeout is not needed when we used the beeps!
-            # if i <= countdown - 1:
-            #     time.sleep(1)
-
-            if overlay != None:
-                self.camera.remove_overlay(overlay)
-
-            led_state = False
-
-    """ Builds the overlay image for the countdown """
-    def __build_overlay_image(self, i):
-
-        screen_width = self.root.winfo_screenwidth()
-        screen_height = self.root.winfo_screenheight()
-
-        # I'm making the bet that preview window size == screen size in fullscreen mode
-        # If this fails we should try preview_width = min(screen_width, self.camera.resolution[0])
-        preview_width = screen_width
-        preview_height = screen_height
-
-        overlay_height = int(preview_height * COUNTDOWN_IMAGE_MAX_HEIGHT_RATIO)
-        
-        # read overlay image file
-        file = Image.open(COUNTDOWN_OVERLAY_IMAGES[i])
-        # resize to 20% of height
-        file.thumbnail((preview_width, overlay_height))
-
-        # overlays should be padded to 32 (width) and 16 (height)
-        pad_width  = int((preview_width + 31) / 32) * 32
-        pad_height = int((preview_height + 15) / 16) * 16
-
-        image = Image.new('RGBA', (pad_width, pad_height))
-        # Paste the original image into the padded one (centered)
-        image.paste(file, ( int((preview_width - file.size[0]) / 2.0), int((preview_height - file.size[1]) / 2.0)))
-
-        return image;
-
-    """ Actual code to email picture self.last_picture_filename
-    """
-    def __send_picture(self):
-        
-        if not self.send_emails:
-            return False
-        
-        retcode = False
-        if self.signed_in:
-            #print 'sending photo by email to %s' % self.email_addr.get()
-            self.set_status("Sending Email")
-            self.log.debug("send_picture: sending picture by email")
-            self.log.debug(self.last_picture_filename)
-            try:
-                retcode = self.oauth2service.send_message(
-                    self.email_addr.get().strip(),
-                    config.emailSubject,
-                    config.emailMsg,
-                    self.last_picture_filename
-                )
-            except Exception, e:
-                self.log.exception('send_picture: Mail sending Failed')
-                self.set_status("Send failed :(")
-                retcode = False
-            else:
-                self.set_status("")
-        else:
-            self.log.error('send_picture: Not signed in')
-            retcode = False
-        return retcode
+        self.log.info("send_print: Image printed")
 
     """ Logs the recipient(?) email address in the sendmail logs """
     def __log_email_address(self, mail_address, consent_to_log, success, last_picture_filename):
@@ -951,7 +931,19 @@ class UserInterface():
         status = "%s (%s) %s %s\n"%(timestamp, sendcode, mail_address, file_path)
         sendmail_log.write(status)
         sendmail_log.close()
-        
+
+    """ Called whenever we should change the state of OAuthServices """
+    def __change_services(self, email, upload):
+        self.oauth2service.enable_email = email
+        self.oauth2service.enable_upload = upload
+        self.send_emails = email
+        self.upload_images = upload
+        #TODO show/hide button = OAuthServices.OAuthServices(
+        if email:
+            self.mail_btn.configure(state=NORMAL)
+        else:
+            self.mail_btn.configure(state=DISABLED)
+       
     """ Displays a screen from where user can choose a builtin effect
         This modifies self.selected_image_effect
     """
@@ -1010,57 +1002,3 @@ class UserInterface():
         top.rowconfigure(NROWS + 1, weight = 1)
         
         self.root.wait_window(top)
-        
-if __name__ == '__main__':
-
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-de", "--disable-email", help="disable the 'send photo by email' feature",
-                    action="store_true")
-    parser.add_argument("-du", "--disable-upload", help="disable the 'auto-upload to Google Photo' feature",
-                    action="store_true")
-    parser.add_argument("-df", "--disable-full-screen", help="disable the full-screen mode",
-                    action="store_true")
-    parser.add_argument("-dh", "--disable-hardware-buttons", help="disable the hardware buttons (on-screen buttons instead)",
-                    action="store_true")
-    parser.add_argument("--log-level", type=str, choices=['DEBUG','INFO','WARNING','ERROR','CRITICAL'],
-                    help="Log level (defaults to WARNING)")
-    args = parser.parse_args()
-    
-    if args.log_level is None:
-        args.log_level = "INFO"
-        
-    """ print args """
-    import configuration
-    config_file = os.path.join("..", "configuration.json")
-    config = configuration.Configuration(config_file)
-    if not config.is_valid:
-        log.critical("No configuration file found, please run setup.sh script to create one")
-        sys.exit()
-
-    """ command line arguments have higher precedence than config """
-    if args.disable_upload and config.enable_upload:
-        log.warning("* Command line argument '--disable-upload' takes precedence over configuration")
-        config.enable_upload = False
-
-    if args.disable_email and config.enable_email:
-        log.warning("* Command line argument '--disable-email' takes precedence over configuration")
-        config.enable_email = False
-
-    if args.disable_hardware_buttons and config.enable_hardware_buttons:
-        log.warning("* Command line argument '--disable-hardware-buttons' takes precedence over configuration")
-        config.enable_hardware_buttons = False
-
-    # if args.disable_full_screen and config.full_screen:
-        # log.warning("* Command line argument '--disable-full-screen' takes precedence over configuration")
-        config.full_screen = False
-
-    ch = logging.StreamHandler()
-    ch.setLevel(args.log_level)
-    ch.setFormatter(logging.Formatter(fmt='%(levelname)-8s|%(asctime)s| %(message)s', datefmt="%H:%M:%S"))
-    logging.getLogger("").addHandler(ch)
-
-    """ TODO move every arguments into config file """
-    ui = UserInterface(config, window_size=(SCREEN_W, SCREEN_H), log_level = logging.DEBUG)
-
-    ui.start_ui()

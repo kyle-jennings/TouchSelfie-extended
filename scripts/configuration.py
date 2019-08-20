@@ -16,7 +16,7 @@ class Configuration():
     album_name   = "Wedding"
     emailSubject = "Kat and Kyle 2019 Photobooth!" # subject line of the email sent from the photobooth
     emailMsg     = "Thank you for being part of this celebration!" # Brief body of the message sent from the photobooth
-    full_screen  = False #Start application in full screen
+    full_screen  = True #Start application in full screen
     enable_email  = True #Enable the 'send email" feature
     enable_upload = True #Enable the upload feature
     enable_print = False #Enable the printer feature

@@ -85,8 +85,6 @@ class PiCamera:
         """Emulates PiCamera.close()"""
         del self.cam
 
-        
-
 if __name__ == '__main__':
     camera = Camera()
     camera.capture("out.jpg")
