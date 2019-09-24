@@ -524,6 +524,7 @@ class UserInterface():
                 self.set_status("Snap failed :(")
                 self.log.critical("snap: snapshot file doesn't exists: %s"%filename)
                 self.image.unload()
+
         except Exception, e:
             self.log.exception("snap: error during snapshot")
             snapshot = None
